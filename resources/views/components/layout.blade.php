@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="csrf-token" content="{{ csrf_token() }}">
-    <title>{{ $title ?? 'SANTRIS' }}</title>
+    <title>{{ $title ?? 'SIM Akta Notaris & PPAT' }}</title>
     @vite(['resources/css/app.css', 'resources/js/app.js'])
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -20,7 +20,7 @@
                     <button id="sidebar-toggle" class="lg:hidden p-1.5 hover:bg-surface-pearl rounded-md">
                         <span class="material-symbols-outlined text-[22px]">menu</span>
                     </button>
-                    <h1 class="text-lg font-bold text-primary">SANTRIS</h1>
+                    <h1 class="text-lg font-bold text-primary">SIM Akta Notaris & PPAT</h1>
                 </div>
                 
                 <div class="flex items-center gap-4">
