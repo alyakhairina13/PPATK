@@ -9,12 +9,15 @@ $modalId = 'confirm-' . md5($action . $message);
 </button>
 
 <div id="{{ $modalId }}" class="hidden fixed inset-0 modal-overlay z-50 flex items-center justify-center p-4 sm:p-6">
-    <div class="card w-full max-w-sm mx-4">
-        <div class="flex items-start gap-3">
-            <div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-red-50 text-error">
+    <div class="card relative mx-4" style="width:min(28rem, calc(100vw - 2rem));">
+        <button type="button" onclick="closeConfirmModal('{{ $modalId }}')" class="absolute right-4 top-4 flex h-8 w-8 items-center justify-center rounded-full border border-border-hairline bg-surface-container-lowest text-text-muted hover:text-on-surface">
+            <span class="material-symbols-outlined text-[18px]">close</span>
+        </button>
+        <div class="flex items-start gap-3 pr-10">
+            <div class="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-red-50 text-error">
                 <span class="material-symbols-outlined text-[22px]">warning</span>
             </div>
-            <div class="min-w-0">
+            <div class="min-w-0 flex-1">
                 <h3 class="text-sm font-semibold text-on-surface">{{ $title }}</h3>
                 <p class="mt-1 text-sm leading-6 text-text-muted">{{ $message }}</p>
             </div>

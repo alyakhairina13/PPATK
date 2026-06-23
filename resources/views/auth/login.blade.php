@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Login - SANTRIS</title>
+    <title>Login - SIM Akta Notaris & PPAT</title>
     @vite(['resources/css/app.css', 'resources/js/app.js'])
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -19,7 +19,7 @@
     <main class="w-full max-w-[360px] glass-card rounded-xl p-[18px] md:p-[24px] flex flex-col gap-[18px] md:gap-[20px]">
         <!-- Header / Branding -->
         <header class="text-center flex flex-col gap-[6px]">
-            <h1 class="text-[30px] leading-[1.08] tracking-tight font-bold text-on-surface" style="font-family: 'Inter', sans-serif;">SANTRIS</h1>
+            <h1 class="text-[30px] leading-[1.08] tracking-tight font-bold text-on-surface" style="font-family: 'Inter', sans-serif;">SIM Akta Notaris & PPAT</h1>
             <div class="mt-[6px]">
                 <h2 class="text-[13px] leading-[1.25] tracking-tight font-semibold text-on-surface" style="font-family: 'Inter', sans-serif;">Welcome back</h2>
                 <p class="text-[13px] leading-[1.4] tracking-tight text-secondary mt-[4px]" style="font-family: 'Inter', sans-serif;">Enter your credentials to continue.</p>
@@ -100,7 +100,7 @@
         <!-- Footer Note -->
         <footer class="text-center mt-[4px]">
             <p class="text-[11px] leading-none tracking-tight text-text-muted" style="font-family: 'Inter', sans-serif;">
-                Securely managed by SANTRIS Legal Systems.
+                Securely managed by SIM Akta Notaris & PPAT Legal Systems.
             </p>
         </footer>
     </main>

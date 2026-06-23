@@ -18,6 +18,7 @@ class Akta extends Model
     protected $fillable = [
         'id_klien',
         'id_user',
+        'template_id',
         'jenis_template',
         'konten_teks_utama',
         'status_workflow',
@@ -41,6 +42,11 @@ class Akta extends Model
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class, 'id_user');
+    }
+
+    public function templateAkta(): BelongsTo
+    {
+        return $this->belongsTo(TemplateAkta::class, 'template_id', 'id_template_akta');
     }
 
     public function lampiran(): HasMany
@@ -71,5 +77,31 @@ class Akta extends Model
     public function isSelesai(): bool
     {
         return $this->status_workflow === 'Selesai';
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    public function getContentFieldsAttribute(): array
+    {
+        $decoded = json_decode($this->konten_teks_utama, true);
+
+        if (! is_array($decoded)) {
+            return [];
+        }
+
+        $fields = [];
+
+        foreach ($decoded as $key => $value) {
+            if (! is_string($key)) {
+                continue;
+            }
+
+            $fields[$key] = is_scalar($value) || $value === null
+                ? (string) $value
+                : '';
+        }
+
+        return $fields;
     }
 }

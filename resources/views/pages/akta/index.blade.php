@@ -8,20 +8,15 @@
                     <h2 class="text-2xl font-semibold text-gray-800">Manajemen Akta</h2>
                     <p class="mt-1 text-sm text-gray-600">Kelola dan pantau seluruh dokumen akta klien.</p>
                 </div>
-                <div class="relative">
-                    <button
-                        type="button"
-                        onclick="document.getElementById('draft-dropdown').classList.toggle('hidden')"
-                        class="inline-flex items-center rounded-md border border-transparent bg-blue-600 px-4 py-2 text-xs font-semibold uppercase tracking-widest text-white hover:bg-blue-700">
+                <div class="flex flex-wrap gap-2">
+                    <a href="{{ route('akta.templates.index') }}" class="inline-flex items-center rounded-md border border-gray-300 bg-white px-4 py-2 text-xs font-semibold uppercase tracking-widest text-gray-700 hover:bg-gray-50">
+                        <span class="material-symbols-outlined mr-2 text-[18px]">library_add</span>
+                        Template Akta
+                    </a>
+                    <a href="{{ route('akta.create') }}" class="inline-flex items-center rounded-md border border-transparent bg-blue-600 px-4 py-2 text-xs font-semibold uppercase tracking-widest text-white hover:bg-blue-700">
                         <span class="material-symbols-outlined mr-2 text-[18px]">add</span>
                         Buat Draft Akta
-                        <span class="material-symbols-outlined ml-1 text-[18px]">expand_more</span>
-                    </button>
-
-                    <div id="draft-dropdown" class="absolute right-0 top-full z-10 mt-2 hidden w-48 overflow-hidden rounded-md border border-gray-200 bg-white shadow-lg">
-                        <a class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50" href="#">Akta PPAT</a>
-                        <a class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50" href="#">Akta Notaris</a>
-                    </div>
+                    </a>
                 </div>
             </div>
         </div>
@@ -43,7 +38,7 @@
                         <div class="relative w-full md:w-44">
                             <select name="jenis_template" class="w-full appearance-none rounded-md border border-gray-300 bg-white px-4 py-2 pr-10 text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500">
                                 <option value="">Semua Jenis</option>
-                                @foreach(['AJB', 'Perjanjian', 'Kuasa', 'PT', 'Wasiat'] as $jenis)
+                                @foreach($templateTitles as $jenis)
                                     <option value="{{ $jenis }}" {{ request('jenis_template') == $jenis ? 'selected' : '' }}>{{ $jenis }}</option>
                                 @endforeach
                             </select>
@@ -108,6 +103,11 @@
                                     <a href="{{ route('akta.show', $akta->id_akta) }}" class="text-blue-600 hover:text-blue-900" title="Lihat">
                                         <span class="material-symbols-outlined text-[20px]">visibility</span>
                                     </a>
+                                    @if($akta->templateAkta)
+                                        <a href="{{ route('akta.download', $akta->id_akta) }}" class="text-green-600 hover:text-green-800" title="Download">
+                                            <span class="material-symbols-outlined text-[20px]">download</span>
+                                        </a>
+                                    @endif
                                     @if($akta->status_workflow !== 'Selesai')
                                         <a href="{{ route('akta.edit', $akta->id_akta) }}" class="text-yellow-600 hover:text-yellow-900" title="Edit">
                                             <span class="material-symbols-outlined text-[20px]">edit</span>
@@ -166,13 +166,4 @@
         @endif
     </div>
 
-    <script>
-        document.addEventListener('click', function(e) {
-            const dropdown = document.getElementById('draft-dropdown');
-            const btn = dropdown?.previousElementSibling;
-            if (dropdown && !btn?.contains(e.target) && !dropdown?.contains(e.target)) {
-                dropdown.classList.add('hidden');
-            }
-        });
-    </script>
 </x-layout>

@@ -7,17 +7,25 @@
                 <h2 class="text-2xl font-semibold text-gray-800">Akta AKT-{{ str_pad($akta->id_akta, 4, '0', STR_PAD_LEFT) }} - {{ $akta->jenis_template }}</h2>
                 <p class="mt-1 text-sm text-gray-600">Klien: {{ $akta->klien->nama_lengkap ?? '-' }}</p>
             </div>
-            <a href="{{ route('akta.index') }}" class="inline-flex items-center rounded-md bg-gray-600 px-4 py-2 text-xs font-semibold uppercase tracking-widest text-white hover:bg-gray-700">
-                <span class="material-symbols-outlined mr-2 text-[18px]">arrow_back</span>
-                Kembali
-            </a>
+            <div class="flex flex-wrap gap-2">
+                @if($akta->templateAkta)
+                    <a href="{{ route('akta.download', $akta->id_akta) }}" class="inline-flex items-center rounded-md bg-green-600 px-4 py-2 text-xs font-semibold uppercase tracking-widest text-white hover:bg-green-700">
+                        <span class="material-symbols-outlined mr-2 text-[18px]">download</span>
+                        Download Akta
+                    </a>
+                @endif
+                <a href="{{ route('akta.index') }}" class="inline-flex items-center rounded-md bg-gray-600 px-4 py-2 text-xs font-semibold uppercase tracking-widest text-white hover:bg-gray-700">
+                    <span class="material-symbols-outlined mr-2 text-[18px]">arrow_back</span>
+                    Kembali
+                </a>
+            </div>
         </div>
 
         <div class="grid grid-cols-1 gap-6 lg:grid-cols-3">
             <div class="space-y-6 lg:col-span-2">
                 <div class="bg-white shadow-sm rounded-lg">
                     <div class="px-6 py-4 border-b border-gray-200 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                        <h3 class="text-lg font-semibold text-gray-800">Konten Akta</h3>
+                        <h3 class="text-lg font-semibold text-gray-800">Data Template Akta</h3>
                         <span class="inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold
                             {{ match($akta->status_workflow) {
                                 'Draft' => 'bg-gray-100 text-gray-800',
@@ -30,9 +38,35 @@
                         </span>
                     </div>
                     <div class="px-6 py-6">
-                        <div class="min-h-[300px] whitespace-pre-wrap rounded-md border border-gray-200 bg-gray-50 p-4 text-sm leading-6 text-gray-800">
-                            {{ $akta->konten_teks_utama ?: 'Belum ada konten' }}
-                        </div>
+                        @php
+                            $contentFields = $resolvedContentFields;
+                            $rawContent = $akta->konten_teks_utama;
+                        @endphp
+
+                        @if(count($contentFields) > 0)
+                            <div class="overflow-hidden rounded-md border border-gray-200">
+                                <table class="min-w-full divide-y divide-gray-200">
+                                    <thead class="bg-gray-50">
+                                        <tr>
+                                            <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-gray-500">Tag</th>
+                                            <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-gray-500">Nilai</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody class="divide-y divide-gray-200 bg-white">
+                                        @foreach($contentFields as $tag => $value)
+                                            <tr>
+                                                <td class="whitespace-nowrap px-4 py-3 text-sm font-medium text-gray-800">{{ $tag }}</td>
+                                                <td class="px-4 py-3 text-sm text-gray-700">{{ $value !== '' ? $value : '-' }}</td>
+                                            </tr>
+                                        @endforeach
+                                    </tbody>
+                                </table>
+                            </div>
+                        @else
+                            <div class="min-h-[180px] whitespace-pre-wrap rounded-md border border-gray-200 bg-gray-50 p-4 text-sm leading-6 text-gray-800">
+                                {{ $rawContent ?: 'Belum ada konten' }}
+                            </div>
+                        @endif
                     </div>
                 </div>
 
@@ -74,6 +108,8 @@
                     </div>
                     <div class="px-6 py-6 text-sm space-y-2">
                         <p><span class="text-gray-500">No. Resmi:</span> {{ $akta->repertorium->nomor_akta_resmi ?? 'Belum terbit' }}</p>
+                        <p><span class="text-gray-500">Template:</span> {{ $akta->templateAkta->title ?? 'Belum dipilih' }}</p>
+                        <p><span class="text-gray-500">Path Template:</span> {{ $akta->templateAkta->file_path ?? '-' }}</p>
                         <p><span class="text-gray-500">Dibuat:</span> {{ $akta->tanggal_dibuat->format('d/m/Y H:i') }}</p>
                         <p><span class="text-gray-500">Update:</span> {{ $akta->last_updated->format('d/m/Y H:i') }}</p>
                         <p><span class="text-gray-500">Oleh:</span> {{ $akta->user->nama_lengkap }}</p>
@@ -113,6 +149,13 @@
                             <a href="{{ route('akta.edit', $akta->id_akta) }}" class="inline-flex w-full items-center justify-center rounded-md bg-blue-600 px-4 py-2 text-sm text-white hover:bg-blue-700">
                                 <span class="material-symbols-outlined mr-2 text-[18px]">edit</span>
                                 Edit Akta
+                            </a>
+                        @endif
+
+                        @if($akta->templateAkta)
+                            <a href="{{ route('akta.download', $akta->id_akta) }}" class="inline-flex w-full items-center justify-center rounded-md bg-green-600 px-4 py-2 text-sm text-white hover:bg-green-700">
+                                <span class="material-symbols-outlined mr-2 text-[18px]">download</span>
+                                Download Dokumen
                             </a>
                         @endif
 

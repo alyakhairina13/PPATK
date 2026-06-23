@@ -9,6 +9,7 @@ use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\KlienController;
 use App\Http\Controllers\AktaController;
 use App\Http\Controllers\LampiranController;
+use App\Http\Controllers\TemplateAktaController;
 
 // Redirect root to dashboard
 Route::get('/', function () {
@@ -38,6 +39,14 @@ Route::middleware('auth')->group(function () {
 
     // Akta routes
     Route::resource('akta', AktaController::class);
+    Route::get('akta/templates/manage', [TemplateAktaController::class, 'index'])
+        ->name('akta.templates.index');
+    Route::post('akta/templates/manage', [TemplateAktaController::class, 'store'])
+        ->name('akta.templates.store');
+    Route::delete('akta/templates/manage/{templateAkta}', [TemplateAktaController::class, 'destroy'])
+        ->name('akta.templates.destroy');
+    Route::get('akta/{id}/download', [AktaController::class, 'download'])
+        ->name('akta.download');
 
     // Workflow status routes
     Route::post('akta/{id}/submit-verification', [AktaController::class, 'submitVerification'])

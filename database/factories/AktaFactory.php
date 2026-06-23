@@ -4,6 +4,7 @@ namespace Database\Factories;
 
 use App\Models\Akta;
 use App\Models\Klien;
+use App\Models\TemplateAkta;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
@@ -19,10 +20,13 @@ class AktaFactory extends Factory
      */
     public function definition(): array
     {
+        $jenisTemplate = fake()->randomElement(['AJB', 'Perjanjian', 'Kuasa', 'PT', 'Wasiat']);
+
         return [
             'id_klien' => Klien::factory(),
             'id_user' => User::factory(),
-            'jenis_template' => fake()->randomElement(['AJB', 'Perjanjian', 'Kuasa', 'PT', 'Wasiat']),
+            'template_id' => TemplateAkta::factory(),
+            'jenis_template' => $jenisTemplate,
             'konten_teks_utama' => fake()->paragraphs(5, true),
             'status_workflow' => 'Draft',
             'tanggal_dibuat' => now(),
