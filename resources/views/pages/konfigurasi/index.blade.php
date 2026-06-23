@@ -1,11 +1,11 @@
 <x-layout>
-    <x-slot name="title">Konfigurasi Penomoran</x-slot>
+    <x-slot name="title">Konfigurasi</x-slot>
 
     <div class="px-4 sm:px-6 lg:px-8">
         <div class="sm:flex sm:items-center">
             <div class="sm:flex-auto">
-                <h1 class="text-2xl font-semibold text-gray-900">Konfigurasi Format Penomoran</h1>
-                <p class="mt-2 text-sm text-gray-700">Atur format penomoran akta repertorium</p>
+                <h1 class="text-2xl font-semibold text-gray-900">Konfigurasi Sistem</h1>
+                <p class="mt-2 text-sm text-gray-700">Atur format penomoran repertorium dan data PPAT global untuk template akta.</p>
             </div>
         </div>
 
@@ -13,6 +13,88 @@
             <form method="POST" action="{{ route('konfigurasi.update') }}" id="konfigurasiForm">
                 @csrf
                 @method('PUT')
+
+                <div class="mb-8 border-b border-gray-200 pb-8">
+                    <div class="mb-6">
+                        <h2 class="text-lg font-semibold text-gray-900">Konfigurasi PPAT</h2>
+                        <p class="mt-1 text-sm text-gray-700">Nilai ini akan otomatis mengisi tag template <code>$ppat_name</code>, <code>$work_area</code>, <code>$appointment_number</code>, <code>$appointment_date</code>, dan <code>$office_address</code>.</p>
+                        @if(!$canManagePpatConfiguration)
+                            <p class="mt-2 text-sm text-amber-700">Hanya notaris yang dapat mengubah konfigurasi PPAT. Anda masih bisa melihat nilainya di sini.</p>
+                        @endif
+                    </div>
+
+                    <div class="grid grid-cols-1 gap-6 md:grid-cols-2">
+                        <div>
+                            <label for="ppat_name" class="block text-sm font-medium text-gray-700 mb-2">Nama PPAT</label>
+                            <input
+                                type="text"
+                                name="ppat_name"
+                                id="ppat_name"
+                                value="{{ old('ppat_name', $ppatConfiguration['ppat_name']) }}"
+                                class="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm px-3 py-2 border disabled:bg-gray-50 disabled:text-gray-500"
+                                {{ $canManagePpatConfiguration ? '' : 'disabled' }}>
+                            @error('ppat_name')
+                                <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
+                            @enderror
+                        </div>
+
+                        <div>
+                            <label for="work_area" class="block text-sm font-medium text-gray-700 mb-2">Wilayah Kerja</label>
+                            <input
+                                type="text"
+                                name="work_area"
+                                id="work_area"
+                                value="{{ old('work_area', $ppatConfiguration['work_area']) }}"
+                                class="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm px-3 py-2 border disabled:bg-gray-50 disabled:text-gray-500"
+                                {{ $canManagePpatConfiguration ? '' : 'disabled' }}>
+                            @error('work_area')
+                                <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
+                            @enderror
+                        </div>
+
+                        <div>
+                            <label for="appointment_number" class="block text-sm font-medium text-gray-700 mb-2">Nomor Pengangkatan</label>
+                            <input
+                                type="text"
+                                name="appointment_number"
+                                id="appointment_number"
+                                value="{{ old('appointment_number', $ppatConfiguration['appointment_number']) }}"
+                                class="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm px-3 py-2 border disabled:bg-gray-50 disabled:text-gray-500"
+                                {{ $canManagePpatConfiguration ? '' : 'disabled' }}>
+                            @error('appointment_number')
+                                <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
+                            @enderror
+                        </div>
+
+                        <div>
+                            <label for="appointment_date" class="block text-sm font-medium text-gray-700 mb-2">Tanggal Pengangkatan</label>
+                            <input
+                                type="text"
+                                name="appointment_date"
+                                id="appointment_date"
+                                value="{{ old('appointment_date', $ppatConfiguration['appointment_date']) }}"
+                                placeholder="Contoh: 12 Januari 2026"
+                                class="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm px-3 py-2 border disabled:bg-gray-50 disabled:text-gray-500"
+                                {{ $canManagePpatConfiguration ? '' : 'disabled' }}>
+                            @error('appointment_date')
+                                <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
+                            @enderror
+                        </div>
+
+                        <div class="md:col-span-2">
+                            <label for="office_address" class="block text-sm font-medium text-gray-700 mb-2">Alamat Kantor</label>
+                            <textarea
+                                name="office_address"
+                                id="office_address"
+                                rows="3"
+                                class="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm px-3 py-2 border disabled:bg-gray-50 disabled:text-gray-500"
+                                {{ $canManagePpatConfiguration ? '' : 'disabled' }}>{{ old('office_address', $ppatConfiguration['office_address']) }}</textarea>
+                            @error('office_address')
+                                <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
+                            @enderror
+                        </div>
+                    </div>
+                </div>
 
                 <!-- Pattern Input -->
                 <div class="mb-6">
@@ -91,7 +173,7 @@
 
                 <!-- Actions -->
                 <div class="flex gap-2">
-                    <button type="button" data-confirm="Apakah Anda yakin ingin menyimpan perubahan konfigurasi?" 
+                    <button type="button" onclick="confirmSave()"
                         class="inline-flex justify-center rounded-md border border-transparent bg-blue-600 py-2 px-4 text-sm font-medium text-white shadow-sm hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2">
                         Simpan
                     </button>
@@ -104,6 +186,12 @@
     </div>
 
     <script>
+        function confirmSave() {
+            if (confirm('Apakah Anda yakin ingin menyimpan perubahan konfigurasi?')) {
+                document.getElementById('konfigurasiForm').submit();
+            }
+        }
+
         function insertVariable(variable) {
             const input = document.getElementById('pattern');
             const start = input.selectionStart;

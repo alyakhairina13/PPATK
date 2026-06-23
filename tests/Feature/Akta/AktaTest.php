@@ -4,8 +4,7 @@ use App\Models\User;
 use App\Models\Akta;
 use App\Models\Klien;
 use App\Models\Repertorium;
-use App\Models\VersionHistory;
-use App\Models\LampiranDokumen;
+use App\Models\TemplateAkta;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
@@ -38,11 +37,18 @@ test('can list akta with filters', function () {
 test('can create new akta draft', function () {
     $user = User::factory()->create();
     $klien = Klien::factory()->create();
+    $template = TemplateAkta::factory()->create([
+        'title' => 'AJB',
+        'tags' => ['nama_penjual', 'nama_pembeli'],
+    ]);
     
     $aktaData = [
         'id_klien' => $klien->id_klien,
-        'jenis_template' => 'AJB',
-        'konten_teks_utama' => 'This is the content of the akta.',
+        'template_id' => $template->id_template_akta,
+        'template_fields' => [
+            'nama_penjual' => 'Budi',
+            'nama_pembeli' => 'Sinta',
+        ],
     ];
     
     $response = $this->actingAs($user)->post('/akta', $aktaData);
@@ -53,9 +59,14 @@ test('can create new akta draft', function () {
         'id_user' => $user->id_user,
         'status_workflow' => 'Draft',
         'jenis_template' => 'AJB',
+        'template_id' => $template->id_template_akta,
     ]);
 
     $akta = Akta::where('id_klien', $klien->id_klien)->first();
+    expect($akta->konten_teks_utama)->toBe(json_encode([
+        'nama_penjual' => 'Budi',
+        'nama_pembeli' => 'Sinta',
+    ], JSON_UNESCAPED_UNICODE));
     
     $response = $this->actingAs($user)->post("/akta/{$akta->id_akta}/submit-verification");
     
@@ -130,8 +141,10 @@ test('Selesai akta is read-only', function () {
     
     $updatedData = [
         'id_klien' => $akta->id_klien,
-        'jenis_template' => $akta->jenis_template,
-        'konten_teks_utama' => 'Trying to update completed akta',
+        'template_id' => $akta->template_id,
+        'template_fields' => [
+            'nama' => 'Trying to update completed akta',
+        ],
     ];
     
     $response = $this->actingAs($user)->put("/akta/{$akta->id_akta}", $updatedData);

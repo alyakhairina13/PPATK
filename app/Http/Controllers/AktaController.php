@@ -4,16 +4,26 @@ namespace App\Http\Controllers;
 
 use App\Models\Akta;
 use App\Models\Klien;
-use App\Models\VersionHistory;
 use App\Models\Repertorium;
+use App\Models\TemplateAkta;
+use App\Services\PpatConfigurationService;
+use App\Models\VersionHistory;
+use App\Services\TemplateAktaService;
 use Illuminate\Http\Request;
+use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\Auth;
 
 class AktaController extends Controller
 {
+    public function __construct(
+        private readonly TemplateAktaService $templateAktaService,
+        private readonly PpatConfigurationService $ppatConfigurationService
+    ) {
+    }
+
     public function index(Request $request)
     {
-        $query = Akta::with(['klien', 'user']);
+        $query = Akta::with(['klien', 'user', 'templateAkta']);
 
         if ($request->filled('status_workflow')) {
             $query->where('status_workflow', $request->status_workflow);
@@ -32,32 +42,47 @@ class AktaController extends Controller
         }
 
         $aktas = $query->orderBy('last_updated', 'desc')->paginate(15);
+        $templateTitles = TemplateAkta::orderBy('title')->pluck('title');
 
-        return view('pages.akta.index', compact('aktas'));
+        return view('pages.akta.index', compact('aktas', 'templateTitles'));
     }
 
     public function create()
     {
         $kliens = Klien::orderBy('nama_lengkap')->get();
-        $jenisAkta = ['AJB', 'Perjanjian', 'Kuasa', 'PT', 'Wasiat'];
+        $templates = TemplateAkta::orderBy('title')->get();
+        $templateOptions = $this->buildTemplateOptions($templates);
+        $lockedTemplateValues = $this->ppatConfigurationService->templateDefaults();
+        $formValues = $this->sanitizeTemplateFields(old('template_fields', []));
 
-        return view('pages.akta.create', compact('kliens', 'jenisAkta'));
+        return view('pages.akta.create', compact(
+            'kliens',
+            'templates',
+            'templateOptions',
+            'lockedTemplateValues',
+            'formValues'
+        ));
     }
 
     public function store(Request $request)
     {
         $validated = $request->validate([
             'id_klien' => 'required|exists:klien,id_klien',
-            'jenis_template' => 'required|in:AJB,Perjanjian,Kuasa,PT,Wasiat',
-            'konten_teks_utama' => 'nullable|string',
+            'template_id' => 'required|exists:template_akta,id_template_akta',
+            'template_fields' => 'nullable|array',
         ]);
 
+        $template = TemplateAkta::findOrFail($validated['template_id']);
+        $templateFields = $this->buildTemplateFieldPayload($template, $validated['template_fields'] ?? []);
+        $contentJson = json_encode($templateFields, JSON_UNESCAPED_UNICODE) ?: '{}';
         $now = now();
+
         $akta = Akta::create([
             'id_klien' => $validated['id_klien'],
             'id_user' => Auth::id(),
-            'jenis_template' => $validated['jenis_template'],
-            'konten_teks_utama' => $validated['konten_teks_utama'] ?? '',
+            'template_id' => $template->id_template_akta,
+            'jenis_template' => $template->title,
+            'konten_teks_utama' => $contentJson,
             'status_workflow' => 'Draft',
             'tanggal_dibuat' => $now,
             'last_updated' => $now,
@@ -66,7 +91,7 @@ class AktaController extends Controller
         VersionHistory::create([
             'id_akta' => $akta->id_akta,
             'versi_ke' => '1',
-            'backup_konten_teks' => $akta->konten_teks_utama,
+            'backup_konten_teks' => $contentJson,
             'timestamp_perubahan' => $now,
             'diubah_oleh' => Auth::user()->nama_lengkap,
         ]);
@@ -77,15 +102,16 @@ class AktaController extends Controller
 
     public function show($id)
     {
-        $akta = Akta::with(['klien', 'user', 'lampiran', 'versionHistory', 'repertorium'])
+        $akta = Akta::with(['klien', 'user', 'lampiran', 'versionHistory', 'repertorium', 'templateAkta'])
             ->findOrFail($id);
+        $resolvedContentFields = $this->resolveDisplayContentFields($akta);
 
-        return view('pages.akta.show', compact('akta'));
+        return view('pages.akta.show', compact('akta', 'resolvedContentFields'));
     }
 
     public function edit($id)
     {
-        $akta = Akta::with(['klien', 'lampiran'])->findOrFail($id);
+        $akta = Akta::with(['klien', 'lampiran', 'versionHistory', 'templateAkta'])->findOrFail($id);
 
         if ($akta->status_workflow === 'Selesai') {
             return redirect()->route('akta.show', $akta->id_akta)
@@ -93,9 +119,21 @@ class AktaController extends Controller
         }
 
         $kliens = Klien::orderBy('nama_lengkap')->get();
-        $jenisAkta = ['AJB', 'Perjanjian', 'Kuasa', 'PT', 'Wasiat'];
+        $templates = TemplateAkta::orderBy('title')->get();
+        $templateOptions = $this->buildTemplateOptions($templates);
+        $lockedTemplateValues = $this->ppatConfigurationService->templateDefaults();
+        $formValues = old('template_fields')
+            ? $this->sanitizeTemplateFields(old('template_fields', []))
+            : $this->mergeWithLockedTemplateDefaults($akta->content_fields);
 
-        return view('pages.akta.edit', compact('akta', 'kliens', 'jenisAkta'));
+        return view('pages.akta.edit', compact(
+            'akta',
+            'kliens',
+            'templates',
+            'templateOptions',
+            'lockedTemplateValues',
+            'formValues'
+        ));
     }
 
     public function update(Request $request, $id)
@@ -108,10 +146,13 @@ class AktaController extends Controller
 
         $validated = $request->validate([
             'id_klien' => 'required|exists:klien,id_klien',
-            'jenis_template' => 'required|in:AJB,Perjanjian,Kuasa,PT,Wasiat',
-            'konten_teks_utama' => 'nullable|string',
+            'template_id' => 'required|exists:template_akta,id_template_akta',
+            'template_fields' => 'nullable|array',
         ]);
 
+        $template = TemplateAkta::findOrFail($validated['template_id']);
+        $templateFields = $this->buildTemplateFieldPayload($template, $validated['template_fields'] ?? []);
+        $contentJson = json_encode($templateFields, JSON_UNESCAPED_UNICODE) ?: '{}';
         $lastVersion = VersionHistory::where('id_akta', $akta->id_akta)
             ->orderByDesc('versi_ke')
             ->first();
@@ -121,15 +162,16 @@ class AktaController extends Controller
         VersionHistory::create([
             'id_akta' => $akta->id_akta,
             'versi_ke' => (string) $newVersion,
-            'backup_konten_teks' => $validated['konten_teks_utama'] ?? $akta->konten_teks_utama,
+            'backup_konten_teks' => $contentJson,
             'timestamp_perubahan' => now(),
             'diubah_oleh' => Auth::user()->nama_lengkap,
         ]);
 
         $akta->update([
             'id_klien' => $validated['id_klien'],
-            'jenis_template' => $validated['jenis_template'],
-            'konten_teks_utama' => $validated['konten_teks_utama'] ?? $akta->konten_teks_utama,
+            'template_id' => $template->id_template_akta,
+            'jenis_template' => $template->title,
+            'konten_teks_utama' => $contentJson,
             'last_updated' => now(),
         ]);
 
@@ -148,6 +190,39 @@ class AktaController extends Controller
 
         return redirect()->route('akta.index')
             ->with('success', 'Akta berhasil dihapus.');
+    }
+
+    public function download($id)
+    {
+        $akta = Akta::with('templateAkta')->findOrFail($id);
+
+        if (! $akta->templateAkta) {
+            return back()->with('error', 'Template akta belum terhubung pada data ini.');
+        }
+
+        try {
+            $outputPath = $this->templateAktaService->renderMergedDocument(
+                $akta->templateAkta,
+                $this->mergeWithLockedTemplateDefaults($akta->content_fields),
+                $akta->id_akta
+            );
+        } catch (\Throwable $exception) {
+            return back()->with('error', 'Dokumen gagal digabungkan: '.$exception->getMessage());
+        }
+
+        $extension = $akta->templateAkta->file_extension;
+        $downloadName = sprintf(
+            'akta-%04d-%s.%s',
+            $akta->id_akta,
+            $akta->templateAkta->slug,
+            $extension
+        );
+
+        return response()
+            ->download($outputPath, $downloadName, [
+                'Content-Type' => $this->templateAktaService->contentTypeForExtension($extension),
+            ])
+            ->deleteFileAfterSend(true);
     }
 
     public function submitVerification($id)
@@ -236,5 +311,89 @@ class AktaController extends Controller
             'tahun_buku' => $year,
             'timestamp_generasi' => now(),
         ]);
+    }
+
+    /**
+     * @param  array<string, mixed>  $fields
+     * @return array<string, string>
+     */
+    private function buildTemplateFieldPayload(TemplateAkta $template, array $fields): array
+    {
+        $payload = [];
+        $lockedTemplateValues = $this->ppatConfigurationService->templateDefaults();
+
+        foreach ($template->tags ?? [] as $tag) {
+            if (array_key_exists($tag, $lockedTemplateValues)) {
+                $payload[$tag] = $lockedTemplateValues[$tag];
+                continue;
+            }
+
+            $payload[$tag] = (string) Arr::get($fields, $tag, '');
+        }
+
+        return $payload;
+    }
+
+    /**
+     * @param  array<string, mixed>  $fields
+     * @return array<string, string>
+     */
+    private function sanitizeTemplateFields(array $fields): array
+    {
+        $sanitized = [];
+
+        foreach ($fields as $key => $value) {
+            if (! is_string($key)) {
+                continue;
+            }
+
+            $sanitized[$key] = is_scalar($value) || $value === null
+                ? (string) $value
+                : '';
+        }
+
+        return $sanitized;
+    }
+
+    /**
+     * @param  array<string, string>  $fields
+     * @return array<string, string>
+     */
+    private function mergeWithLockedTemplateDefaults(array $fields): array
+    {
+        return array_merge($fields, $this->ppatConfigurationService->templateDefaults());
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    private function resolveDisplayContentFields(Akta $akta): array
+    {
+        $resolved = $this->mergeWithLockedTemplateDefaults($akta->content_fields);
+        $tags = $akta->templateAkta->tags ?? [];
+
+        if (! is_array($tags) || $tags === []) {
+            return $resolved;
+        }
+
+        $display = [];
+
+        foreach ($tags as $tag) {
+            $display[$tag] = $resolved[$tag] ?? '';
+        }
+
+        return $display;
+    }
+
+    private function buildTemplateOptions($templates): array
+    {
+        return $templates->mapWithKeys(function ($template) {
+            return [
+                $template->id_template_akta => [
+                    'title' => $template->title,
+                    'tags' => $template->tags ?? [],
+                ],
+            ];
+        })->toArray();
     }
 }
