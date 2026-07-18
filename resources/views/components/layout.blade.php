@@ -56,35 +56,41 @@
             <!-- Sidebar -->
             <aside id="sidebar" class="glass-sidebar fixed left-0 top-[61px] bottom-0 z-40 w-60 shrink-0 -translate-x-full transform overflow-y-auto transition-transform duration-300 ease-in-out lg:relative lg:top-auto lg:bottom-auto lg:mt-0 lg:h-full lg:translate-x-0 lg:overflow-y-auto">
                 <nav class="space-y-1.5 p-3">
+                    @if(auth()->user()->isNotaris())
                     <a href="{{ route('dashboard') }}" class="sidebar-item {{ request()->routeIs('dashboard') ? 'active' : '' }}">
                         <span class="material-symbols-outlined text-[20px] mr-3">home</span>
                         Dashboard
                     </a>
-                    
+                    @endif
+
                     <a href="{{ route('klien.index') }}" class="sidebar-item {{ request()->routeIs('klien.*') ? 'active' : '' }}">
                         <span class="material-symbols-outlined text-[20px] mr-3">groups</span>
                         Data Klien
                     </a>
-                    
+
                     <a href="{{ route('akta.index') }}" class="sidebar-item {{ request()->routeIs('akta.*') ? 'active' : '' }}">
                         <span class="material-symbols-outlined text-[20px] mr-3">description</span>
                         Akta
                     </a>
-                    
+
                     <a href="{{ route('repertorium.index') }}" class="sidebar-item {{ request()->routeIs('repertorium.*') ? 'active' : '' }}">
                         <span class="material-symbols-outlined text-[20px] mr-3">menu_book</span>
                         Repertorium
                     </a>
-                    
+
+                    @if(auth()->user()->isNotaris())
                     <a href="{{ route('laporan.index') }}" class="sidebar-item {{ request()->routeIs('laporan.*') ? 'active' : '' }}">
                         <span class="material-symbols-outlined text-[20px] mr-3">analytics</span>
                         Laporan
                     </a>
-                    
+                    @endif
+
+                    @if(auth()->user()->isNotaris())
                     <a href="{{ route('konfigurasi.index') }}" class="sidebar-item {{ request()->routeIs('konfigurasi.*') ? 'active' : '' }}">
                         <span class="material-symbols-outlined text-[20px] mr-3">settings</span>
                         Konfigurasi
                     </a>
+                    @endif
                 </nav>
             </aside>
 

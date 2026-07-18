@@ -7,6 +7,20 @@ use Illuminate\Support\Facades\File;
 class PpatConfigurationService
 {
     /**
+     * Placeholder prefix whose group is automatically populated from this
+     * configuration on the akta forms (e.g. `{{$dppat_name}}`).
+     */
+    public const AUTOFILL_PREFIX = 'dppat';
+
+    /**
+     * Whether a placeholder tag belongs to the auto-filled PPAT group.
+     */
+    public function isAutofillTag(string $tag): bool
+    {
+        return TemplateAktaService::groupPrefixForTag($tag) === self::AUTOFILL_PREFIX;
+    }
+
+    /**
      * @return array<string, string>
      */
     public function getConfiguration(): array
@@ -14,30 +28,36 @@ class PpatConfigurationService
         $path = $this->getFilePath();
 
         if (! File::exists($path)) {
-            $defaults = $this->defaults();
-            $this->writeConfiguration($defaults);
+            $this->writeConfiguration($this->defaults());
 
-            return $defaults;
+            return $this->defaults();
         }
 
         $decoded = json_decode(File::get($path), true);
 
-        if (! is_array($decoded)) {
-            $defaults = $this->defaults();
-            $this->writeConfiguration($defaults);
+        $stored = is_array($decoded)
+            ? array_filter($decoded, fn ($value, $key) => $this->isAutofillTag((string) $key), ARRAY_FILTER_USE_BOTH)
+            : [];
 
-            return $defaults;
-        }
-
-        return array_merge($this->defaults(), array_intersect_key($decoded, $this->defaults()));
+        return array_merge($this->defaults(), $stored);
     }
 
     /**
+     * Persist any provided values whose key belongs to the PPAT auto-fill
+     * group. Values are stored verbatim (including empties) so that a field
+     * stays recognised as config-managed.
+     *
      * @param  array<string, string>  $values
      */
     public function updateConfiguration(array $values): void
     {
-        $payload = array_merge($this->defaults(), array_intersect_key($values, $this->defaults()));
+        $payload = [];
+
+        foreach ($values as $key => $value) {
+            if (is_string($key) && $this->isAutofillTag($key)) {
+                $payload[$key] = is_scalar($value) ? (string) $value : '';
+            }
+        }
 
         $this->writeConfiguration($payload);
     }
@@ -48,11 +68,11 @@ class PpatConfigurationService
     public function defaults(): array
     {
         return [
-            'ppat_name' => '',
-            'work_area' => '',
-            'appointment_number' => '',
-            'appointment_date' => '',
-            'office_address' => '',
+            'dppat_name' => '',
+            'dppat_work_area' => '',
+            'dppat_appointment_number' => '',
+            'dppat_appointment_date' => '',
+            'dppat_office_address' => '',
         ];
     }
 

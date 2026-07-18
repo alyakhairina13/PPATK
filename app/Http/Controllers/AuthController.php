@@ -31,6 +31,12 @@ class AuthController extends Controller
         if (Auth::attempt($credentials, $remember)) {
             $request->session()->regenerate();
 
+            $user = Auth::user();
+
+            if ($user->isAdminStaff()) {
+                return redirect()->route('akta.index');
+            }
+
             return redirect()->intended(route('dashboard'));
         }
 

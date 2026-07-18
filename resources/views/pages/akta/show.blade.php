@@ -48,14 +48,17 @@
                                 <table class="min-w-full divide-y divide-gray-200">
                                     <thead class="bg-gray-50">
                                         <tr>
-                                            <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-gray-500">Tag</th>
+                                            <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-gray-500">Kolom</th>
                                             <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-gray-500">Nilai</th>
                                         </tr>
                                     </thead>
                                     <tbody class="divide-y divide-gray-200 bg-white">
                                         @foreach($contentFields as $tag => $value)
                                             <tr>
-                                                <td class="whitespace-nowrap px-4 py-3 text-sm font-medium text-gray-800">{{ $tag }}</td>
+                                                <td class="whitespace-nowrap px-4 py-3 text-sm font-medium text-gray-800">
+                                                    {{ \App\Services\TemplateAktaService::labelForTag($tag) }}
+                                                    <span class="block text-xs font-normal text-gray-400">${{ $tag }}</span>
+                                                </td>
                                                 <td class="px-4 py-3 text-sm text-gray-700">{{ $value !== '' ? $value : '-' }}</td>
                                             </tr>
                                         @endforeach

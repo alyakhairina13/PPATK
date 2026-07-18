@@ -17,82 +17,34 @@
                 <div class="mb-8 border-b border-gray-200 pb-8">
                     <div class="mb-6">
                         <h2 class="text-lg font-semibold text-gray-900">Konfigurasi PPAT</h2>
-                        <p class="mt-1 text-sm text-gray-700">Nilai ini akan otomatis mengisi tag template <code>$ppat_name</code>, <code>$work_area</code>, <code>$appointment_number</code>, <code>$appointment_date</code>, dan <code>$office_address</code>.</p>
+                        <p class="mt-2 text-sm text-gray-600">Nilai field berprefix <code>dppat</code> (grup <b>Data PPAT</b>) pada template akta akan terisi otomatis dari sini dan dikunci di form akta.</p>
                         @if(!$canManagePpatConfiguration)
                             <p class="mt-2 text-sm text-amber-700">Hanya notaris yang dapat mengubah konfigurasi PPAT. Anda masih bisa melihat nilainya di sini.</p>
                         @endif
                     </div>
 
                     <div class="grid grid-cols-1 gap-6 md:grid-cols-2">
-                        <div>
-                            <label for="ppat_name" class="block text-sm font-medium text-gray-700 mb-2">Nama PPAT</label>
-                            <input
-                                type="text"
-                                name="ppat_name"
-                                id="ppat_name"
-                                value="{{ old('ppat_name', $ppatConfiguration['ppat_name']) }}"
-                                class="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm px-3 py-2 border disabled:bg-gray-50 disabled:text-gray-500"
-                                {{ $canManagePpatConfiguration ? '' : 'disabled' }}>
-                            @error('ppat_name')
-                                <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
-                            @enderror
-                        </div>
+                        @foreach($ppatTagKeys as $tag)
+                            <div>
+                                <label for="ppat_{{ $tag }}" class="block text-sm font-medium text-gray-700 mb-2">
+                                    {{ \App\Services\TemplateAktaService::labelForTag($tag) }}
+                                </label>
+                                <input
+                                    type="text"
+                                    name="ppat_values[{{ $tag }}]"
+                                    id="ppat_{{ $tag }}"
+                                    value="{{ old("ppat_values.$tag", $ppatConfiguration[$tag] ?? '') }}"
+                                    class="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm px-3 py-2 border disabled:bg-gray-50 disabled:text-gray-500"
+                                    {{ $canManagePpatConfiguration ? '' : 'disabled' }}>
+                                @error("ppat_values.$tag")
+                                    <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
+                                @enderror
+                            </div>
+                        @endforeach
 
-                        <div>
-                            <label for="work_area" class="block text-sm font-medium text-gray-700 mb-2">Wilayah Kerja</label>
-                            <input
-                                type="text"
-                                name="work_area"
-                                id="work_area"
-                                value="{{ old('work_area', $ppatConfiguration['work_area']) }}"
-                                class="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm px-3 py-2 border disabled:bg-gray-50 disabled:text-gray-500"
-                                {{ $canManagePpatConfiguration ? '' : 'disabled' }}>
-                            @error('work_area')
-                                <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
-                            @enderror
-                        </div>
-
-                        <div>
-                            <label for="appointment_number" class="block text-sm font-medium text-gray-700 mb-2">Nomor Pengangkatan</label>
-                            <input
-                                type="text"
-                                name="appointment_number"
-                                id="appointment_number"
-                                value="{{ old('appointment_number', $ppatConfiguration['appointment_number']) }}"
-                                class="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm px-3 py-2 border disabled:bg-gray-50 disabled:text-gray-500"
-                                {{ $canManagePpatConfiguration ? '' : 'disabled' }}>
-                            @error('appointment_number')
-                                <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
-                            @enderror
-                        </div>
-
-                        <div>
-                            <label for="appointment_date" class="block text-sm font-medium text-gray-700 mb-2">Tanggal Pengangkatan</label>
-                            <input
-                                type="text"
-                                name="appointment_date"
-                                id="appointment_date"
-                                value="{{ old('appointment_date', $ppatConfiguration['appointment_date']) }}"
-                                placeholder="Contoh: 12 Januari 2026"
-                                class="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm px-3 py-2 border disabled:bg-gray-50 disabled:text-gray-500"
-                                {{ $canManagePpatConfiguration ? '' : 'disabled' }}>
-                            @error('appointment_date')
-                                <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
-                            @enderror
-                        </div>
-
-                        <div class="md:col-span-2">
-                            <label for="office_address" class="block text-sm font-medium text-gray-700 mb-2">Alamat Kantor</label>
-                            <textarea
-                                name="office_address"
-                                id="office_address"
-                                rows="3"
-                                class="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm px-3 py-2 border disabled:bg-gray-50 disabled:text-gray-500"
-                                {{ $canManagePpatConfiguration ? '' : 'disabled' }}>{{ old('office_address', $ppatConfiguration['office_address']) }}</textarea>
-                            @error('office_address')
-                                <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
-                            @enderror
-                        </div>
+                        @if(empty($ppatTagKeys))
+                            <p class="text-sm text-gray-500 md:col-span-2">Belum ada field berprefix <code>dppat</code> terdeteksi pada template. Unggah template dengan placeholder seperti <code>&#123;&#123;$dppat_name&#125;&#125;</code> agar muncul di sini.</p>
+                        @endif
                     </div>
                 </div>
 

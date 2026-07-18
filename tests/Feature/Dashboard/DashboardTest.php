@@ -7,7 +7,7 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 uses(RefreshDatabase::class);
 
 test('dashboard is accessible when authenticated', function () {
-    $user = User::factory()->create();
+    $user = User::factory()->notaris()->create();
     
     $response = $this->actingAs($user)->get('/dashboard');
     
@@ -16,7 +16,7 @@ test('dashboard is accessible when authenticated', function () {
 });
 
 test('dashboard shows correct stats', function () {
-    $user = User::factory()->create();
+    $user = User::factory()->notaris()->create();
     
     Akta::factory()->count(5)->create(['status_workflow' => 'Draft']);
     Akta::factory()->count(3)->create(['status_workflow' => 'Diverifikasi']);
@@ -41,20 +41,19 @@ test('unauthenticated user cannot access dashboard', function () {
 });
 
 test('dashboard displays user information', function () {
-    $user = User::factory()->create([
+    $user = User::factory()->notaris()->create([
         'nama_lengkap' => 'Test User',
-        'role' => 'AdminStaff',
     ]);
     
     $response = $this->actingAs($user)->get('/dashboard');
     
     $response->assertStatus(200);
     $response->assertSee('Test User');
-    $response->assertSee('AdminStaff');
+    $response->assertSee('Notaris');
 });
 
-test('dashboard shows verification queue for admin staff', function () {
-    $user = User::factory()->adminStaff()->create();
+test('dashboard shows verification queue', function () {
+    $user = User::factory()->notaris()->create();
     
     Akta::factory()->count(3)->create(['status_workflow' => 'Diverifikasi']);
     Akta::factory()->count(2)->create(['status_workflow' => 'Draft']);
@@ -67,8 +66,16 @@ test('dashboard shows verification queue for admin staff', function () {
     });
 });
 
+test('admin staff cannot access dashboard', function () {
+    $user = User::factory()->adminStaff()->create();
+    
+    $response = $this->actingAs($user)->get('/dashboard');
+    
+    $response->assertRedirect('/akta');
+});
+
 test('dashboard shows monthly statistics', function () {
-    $user = User::factory()->create();
+    $user = User::factory()->notaris()->create();
     
     Akta::factory()->count(5)->create([
         'created_at' => now()->startOfMonth(),

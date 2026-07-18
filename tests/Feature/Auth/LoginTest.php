@@ -23,7 +23,7 @@ test('can login with valid credentials as admin', function () {
         'password' => 'password123',
     ]);
     
-    $response->assertRedirect('/dashboard');
+    $response->assertRedirect('/akta');
     $this->assertAuthenticatedAs($user);
 });
 
@@ -85,7 +85,7 @@ test('unauthenticated user is redirected to login', function () {
 });
 
 test('login with remember me functionality', function () {
-    $user = User::factory()->create([
+    $user = User::factory()->notaris()->create([
         'username' => 'testuser',
         'password' => bcrypt('password123'),
     ]);

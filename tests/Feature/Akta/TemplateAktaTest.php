@@ -10,6 +10,25 @@ use Illuminate\Support\Facades\Storage;
 
 uses(RefreshDatabase::class);
 
+test('templates management page renders alias management with dynamic groups', function () {
+    $user = User::factory()->create();
+
+    TemplateAkta::factory()->create([
+        'tags' => ['dppat_name', 'dseller_name', 'dpihak1_nama', 'dpihak2_nama', 'keterangan'],
+    ]);
+
+    $response = $this->actingAs($user)->get(route('akta.templates.index'));
+
+    $response->assertOk();
+    $response->assertSee('Kelola Alias Label');
+    $response->assertSee('Data PPAT');
+    $response->assertSee('Data Penjual');
+    $response->assertSee('Pihak 1');
+    $response->assertSee('Pihak 2');
+    $response->assertSee('Data Lainnya');
+    $response->assertSee('Nama PPAT');
+});
+
 test('can upload template akta and extract tags', function () {
     Storage::fake('local');
 
