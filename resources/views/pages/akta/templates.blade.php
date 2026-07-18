@@ -5,7 +5,7 @@
         <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div>
                 <h2 class="text-2xl font-semibold text-gray-800">Template Akta</h2>
-                <p class="mt-1 text-sm text-gray-600">Unggah file <code>.doc</code> atau <code>.docx</code>, lalu sistem akan mendeteksi placeholder seperti <code>&#123;&#123;$nama_field&#125;&#125;</code>.</p>
+                <p class="mt-1 text-sm text-gray-600">Unggah file <code>.doc</code> atau <code>.docx</code>. Placeholder dengan prefix (mis. <code>&#123;&#123;$dppat_name&#125;&#125;</code>) akan otomatis dikelompokkan dan diberi alias label.</p>
             </div>
             <div class="flex flex-wrap gap-2">
                 <a href="{{ route('akta.index') }}" class="inline-flex items-center rounded-md bg-gray-600 px-4 py-2 text-xs font-semibold uppercase tracking-widest text-white hover:bg-gray-700">
@@ -55,7 +55,7 @@
                                 class="block w-full rounded-md border border-gray-300 bg-white px-4 py-2 text-sm text-gray-700 file:mr-4 file:rounded-md file:border-0 file:bg-blue-50 file:px-3 file:py-2 file:text-sm file:font-medium file:text-blue-700 hover:file:bg-blue-100 @error('template_file') border-red-500 @enderror"
                                 required
                             >
-                            <p class="mt-1 text-xs text-gray-500">Gunakan file <code>.doc</code> atau <code>.docx</code>. File <code>.docs</code> tidak didukung. Pastikan file mengandung placeholder seperti <code>&#123;&#123;$nama_pihak&#125;&#125;</code>, <code>&#123;&#123;$alamat&#125;&#125;</code>, atau bentuk serupa.</p>
+                            <p class="mt-1 text-xs text-gray-500">Gunakan file <code>.doc</code> atau <code>.docx</code>. File <code>.docs</code> tidak didukung. Beri awalan prefix pada placeholder untuk pengelompokan otomatis, mis. <code>&#123;&#123;$dppat_name&#125;&#125;</code> (grup <b>Data PPAT</b>), <code>&#123;&#123;$dseller_name&#125;&#125;</code> (grup <b>Data Penjual</b>), <code>&#123;&#123;$dbuyer_name&#125;&#125;</code> (grup <b>Data Pembeli</b>), <code>&#123;&#123;$dwitness1_name&#125;&#125;</code> (grup <b>Data Saksi</b>), <code>&#123;&#123;$dland_nib&#125;&#125;</code> (grup <b>Data Objek Tanah</b>), <code>&#123;&#123;$dlocation_province&#125;&#125;</code> (grup <b>Data Lokasi</b>), atau <code>&#123;&#123;$dtrx_price_number&#125;&#125;</code> (grup <b>Data Transaksi</b>).</p>
                             @error('template_file')
                                 <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
                             @enderror
@@ -106,11 +106,24 @@
                                     </div>
                                 </div>
 
-                                <div class="mt-4 flex flex-wrap gap-2">
-                                    @foreach($template->tags ?? [] as $tag)
-                                        <span class="inline-flex items-center rounded-full bg-white px-3 py-1 text-xs font-medium text-gray-700 ring-1 ring-gray-200">
-                                            &#123;&#123;${{ $tag }}&#125;&#125;
-                                        </span>
+                                <div class="mt-4 space-y-3">
+                                    @php
+                                        $groupedTags = $template->grouped_tags;
+                                    @endphp
+                                    @foreach($groupedTags as $prefix => $tags)
+                                        <div>
+                                            <p class="mb-1.5 text-xs font-semibold uppercase tracking-wide text-gray-500">
+                                                {{ \App\Services\TemplateAktaService::groupLabelForPrefix($prefix) }}
+                                                <span class="ml-1 font-normal normal-case text-gray-400">({{ count($tags) }})</span>
+                                            </p>
+                                            <div class="flex flex-wrap gap-2">
+                                                @foreach($tags as $tag)
+                                                    <span class="inline-flex items-center rounded-full bg-white px-3 py-1 text-xs font-medium text-gray-700 ring-1 ring-gray-200" title="${{ $tag }}">
+                                                        {{ \App\Services\TemplateAktaService::labelForTag($tag) }}
+                                                    </span>
+                                                @endforeach
+                                            </div>
+                                        </div>
                                     @endforeach
                                 </div>
                             </div>
@@ -123,6 +136,69 @@
                     </div>
                 </div>
             </div>
+        </div>
+
+        <div class="rounded-lg bg-white shadow-sm">
+            <div class="border-b border-gray-200 px-6 py-4">
+                <h3 class="text-lg font-semibold text-gray-800">Kelola Alias Label</h3>
+                <p class="mt-1 text-sm text-gray-600">Atur label grup (prefix) dan label tiap field (tag). Prefix dideteksi otomatis dari bagian nama sebelum underscore pertama (angka di akhir diabaikan, mis. <code>dwitness1_name</code> → <code>dwitness</code>).</p>
+            </div>
+
+            <form method="POST" action="{{ route('akta.templates.aliases.update') }}" class="space-y-6 px-6 py-6">
+                @csrf
+                @method('PUT')
+
+                <div>
+                    <h4 class="text-sm font-semibold text-gray-800">Alias Grup (Prefix)</h4>
+                    <p class="mt-1 text-xs text-gray-500">Kosongkan untuk memakai label otomatis (terlihat sebagai placeholder).</p>
+                    <div class="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2">
+                        @foreach($prefixKeys as $prefix)
+                            <div class="flex items-center gap-3">
+                                <span class="inline-flex w-32 shrink-0 items-center rounded bg-gray-100 px-2 py-1 font-mono text-xs text-gray-600" title="${{ $prefix }}_">${{ $prefix }}_</span>
+                                <input
+                                    type="text"
+                                    name="prefix_aliases[{{ $prefix }}]"
+                                    value="{{ $prefixAliases[$prefix] ?? '' }}"
+                                    placeholder="{{ \App\Services\TemplateAktaService::groupLabelForPrefix($prefix) }}"
+                                    class="w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                >
+                            </div>
+                        @endforeach
+                        @if(empty($prefixKeys))
+                            <p class="text-sm text-gray-500">Belum ada prefix terdeteksi. Unggah template dengan placeholder berprefix terlebih dahulu.</p>
+                        @endif
+                    </div>
+                </div>
+
+                <div>
+                    <h4 class="text-sm font-semibold text-gray-800">Alias Tag (Field)</h4>
+                    <p class="mt-1 text-xs text-gray-500">Label ini dipakai pada form pembuatan/pengubahan akta dan halaman detail.</p>
+                    <div class="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2">
+                        @foreach($tagKeys as $tag)
+                            <div class="flex items-center gap-3">
+                                <span class="inline-flex w-48 shrink-0 truncate rounded bg-gray-100 px-2 py-1 font-mono text-xs text-gray-600" title="${{ $tag }}">${{ $tag }}</span>
+                                <input
+                                    type="text"
+                                    name="tag_aliases[{{ $tag }}]"
+                                    value="{{ $tagAliases[$tag] ?? '' }}"
+                                    placeholder="{{ \App\Services\TemplateAktaService::labelForTag($tag) }}"
+                                    class="w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                >
+                            </div>
+                        @endforeach
+                        @if(empty($tagKeys))
+                            <p class="text-sm text-gray-500">Belum ada tag terdeteksi.</p>
+                        @endif
+                    </div>
+                </div>
+
+                <div class="flex justify-end">
+                    <button type="submit" class="inline-flex items-center justify-center rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700">
+                        <span class="material-symbols-outlined mr-2 text-[18px]">save</span>
+                        Simpan Alias
+                    </button>
+                </div>
+            </form>
         </div>
     </div>
 </x-layout>

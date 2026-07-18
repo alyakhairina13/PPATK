@@ -11,9 +11,9 @@ use App\Http\Controllers\AktaController;
 use App\Http\Controllers\LampiranController;
 use App\Http\Controllers\TemplateAktaController;
 
-// Redirect root to dashboard
+// Redirect root based on role
 Route::get('/', function () {
-    return redirect()->route('dashboard');
+    return redirect()->route(auth()->check() && auth()->user()->isAdminStaff() ? 'akta.index' : 'dashboard');
 });
 
 // Authentication routes
@@ -23,8 +23,10 @@ Route::post('/logout', [AuthController::class, 'logout'])->name('logout');
 
 // Protected routes
 Route::middleware('auth')->group(function () {
-    // Dashboard
-    Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
+    // Dashboard (Notaris only)
+    Route::get('/dashboard', [DashboardController::class, 'index'])
+        ->middleware('role:Notaris')
+        ->name('dashboard');
 
     // Klien routes
     Route::get('/klien', [KlienController::class, 'index'])->name('klien.index');
@@ -45,6 +47,8 @@ Route::middleware('auth')->group(function () {
         ->name('akta.templates.store');
     Route::delete('akta/templates/manage/{templateAkta}', [TemplateAktaController::class, 'destroy'])
         ->name('akta.templates.destroy');
+    Route::put('akta/templates/manage/aliases', [TemplateAktaController::class, 'updateAliases'])
+        ->name('akta.templates.aliases.update');
     Route::get('akta/{id}/download', [AktaController::class, 'download'])
         ->name('akta.download');
 
@@ -68,12 +72,19 @@ Route::middleware('auth')->group(function () {
     Route::get('/repertorium', [RepertoriumController::class, 'index'])->name('repertorium.index');
     Route::get('/repertorium/{id}', [RepertoriumController::class, 'show'])->name('repertorium.show');
 
-    // Laporan routes
-    Route::get('/laporan', [LaporanController::class, 'index'])->name('laporan.index');
-    Route::post('/laporan/generate', [LaporanController::class, 'generate'])->name('laporan.generate');
-    Route::get('/laporan/export/{type}', [LaporanController::class, 'export'])->name('laporan.export');
+    // Laporan routes (Notaris only)
+    Route::get('/laporan', [LaporanController::class, 'index'])
+        ->middleware('role:Notaris')
+        ->name('laporan.index');
+    Route::get('/laporan/export/{type}', [LaporanController::class, 'export'])
+        ->middleware('role:Notaris')
+        ->name('laporan.export');
 
-    // Konfigurasi routes
-    Route::get('/konfigurasi', [KonfigurasiController::class, 'index'])->name('konfigurasi.index');
-    Route::put('/konfigurasi', [KonfigurasiController::class, 'update'])->name('konfigurasi.update');
+    // Konfigurasi routes (Notaris only)
+    Route::get('/konfigurasi', [KonfigurasiController::class, 'index'])
+        ->middleware('role:Notaris')
+        ->name('konfigurasi.index');
+    Route::put('/konfigurasi', [KonfigurasiController::class, 'update'])
+        ->middleware('role:Notaris')
+        ->name('konfigurasi.update');
 });

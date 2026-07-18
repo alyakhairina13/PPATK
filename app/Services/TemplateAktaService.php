@@ -12,6 +12,126 @@ class TemplateAktaService
 {
     private const OLE_DOC_MAGIC = "\xD0\xCF\x11\xE0\xA1\xB1\x1A\xE1";
 
+    /**
+     * Detect the group prefix of a placeholder tag dynamically and strictly.
+     *
+     * The prefix is the leading token of the tag name up to (but excluding)
+     * the first underscore, kept verbatim including any trailing digits.
+     * This means `dpihak1_nama` and `dpihak2_nama` resolve to the distinct
+     * prefixes `dpihak1` and `dpihak2` (separate groups "Pihak 1" / "Pihak 2")
+     * rather than being merged. Tags without an underscore (or whose token is
+     * empty) have no detectable prefix.
+     */
+    public static function detectPrefix(string $tag): ?string
+    {
+        $pos = strpos($tag, '_');
+
+        if ($pos === false || $pos === 0) {
+            return null;
+        }
+
+        $token = substr($tag, 0, $pos);
+
+        return $token !== '' ? $token : null;
+    }
+
+    /**
+     * All configured prefix (group) aliases, as managed from the template
+     * management screen.
+     *
+     * @return array<string, string>
+     */
+    public static function prefixGroupLabels(): array
+    {
+        return app(TagAliasService::class)->prefixAliases();
+    }
+
+    /**
+     * All configured tag (field) aliases.
+     *
+     * @return array<string, string>
+     */
+    public static function tagLabels(): array
+    {
+        return app(TagAliasService::class)->tagAliases();
+    }
+
+    /**
+     * Resolve the group prefix for a given placeholder tag name.
+     * Tags without a detectable prefix fall back to the `lainnya` bucket.
+     */
+    public static function groupPrefixForTag(string $tag): string
+    {
+        return self::detectPrefix($tag) ?? 'lainnya';
+    }
+
+    public static function groupLabelForPrefix(string $prefix): string
+    {
+        $aliases = app(TagAliasService::class);
+
+        return $aliases->prefixLabel($prefix) ?? $aliases->fallbackPrefixLabel($prefix);
+    }
+
+    /**
+     * Group an ordered list of tag names by their detected prefix, preserving
+     * the order in which each group first appears in the tag list as well as
+     * the original order of tags within a group.
+     *
+     * @param  array<int, string>  $tags
+     * @return array<string, array<int, string>>
+     */
+    public static function groupTagsByPrefix(array $tags): array
+    {
+        $ordered = [];
+
+        foreach ($tags as $tag) {
+            $prefix = self::groupPrefixForTag($tag);
+            $ordered[$prefix][] = $tag;
+        }
+
+        return $ordered;
+    }
+
+    /**
+     * Resolve the human readable label for a single placeholder tag.
+     * Prefers an explicit alias; otherwise derives a CamelCase label from
+     * the part of the name that follows the group prefix.
+     */
+    public static function labelForTag(string $tag): string
+    {
+        $explicit = app(TagAliasService::class)->tagLabel($tag);
+
+        if ($explicit !== null) {
+            return $explicit;
+        }
+
+        $prefix = self::groupPrefixForTag($tag);
+        $remainder = $prefix !== 'lainnya'
+            ? ltrim(substr($tag, strlen($prefix)), '_')
+            : $tag;
+
+        $label = self::camelToLabel($remainder);
+
+        return $label !== '' ? $label : self::camelToLabel($tag);
+    }
+
+    /**
+     * Convert a snake_case / camelCase identifier into a human readable,
+     * CamelCase-derived label (e.g. `work_area` -> "Work Area",
+     * `tanggalLahir` -> "Tanggal Lahir", `nama` -> "Nama").
+     */
+    private static function camelToLabel(string $value): string
+    {
+        $value = preg_replace('/[^a-zA-Z0-9]+/', ' ', $value) ?? $value;
+        $value = preg_replace('/([a-z0-9])([A-Z])/', '$1 $2', $value) ?? $value;
+        $value = preg_replace('/([A-Z])([A-Z][a-z])/', '$1 $2', $value) ?? $value;
+
+        $parts = preg_split('/\s+/', trim($value)) ?: [];
+        $parts = array_map('ucfirst', $parts);
+
+        return trim(implode(' ', $parts));
+    }
+
     public function __construct(private readonly PpatConfigurationService $ppatConfigurationService)
     {
     }

@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\KonfigurasiNomor;
+use App\Models\TemplateAkta;
 use App\Services\PpatConfigurationService;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Http\Request;
@@ -18,7 +19,7 @@ class KonfigurasiController extends Controller
     public function index(): View
     {
         $konfigurasi = KonfigurasiNomor::first();
-        
+
         if (!$konfigurasi) {
             $konfigurasi = KonfigurasiNomor::create([
                 'pattern' => '{NOMOR}/{TAHUN}/{BULAN}-Rptm',
@@ -28,11 +29,30 @@ class KonfigurasiController extends Controller
         }
 
         $ppatConfiguration = $this->ppatConfigurationService->getConfiguration();
+
+        $ppatTagKeys = [];
+
+        foreach (TemplateAkta::all() as $template) {
+            foreach ($template->tags ?? [] as $tag) {
+                if ($this->ppatConfigurationService->isAutofillTag($tag)) {
+                    $ppatTagKeys[$tag] = true;
+                }
+            }
+        }
+
+        foreach (array_keys($ppatConfiguration) as $key) {
+            $ppatTagKeys[$key] = true;
+        }
+
+        $ppatTagKeys = array_keys($ppatTagKeys);
+        sort($ppatTagKeys);
+
         $canManagePpatConfiguration = Auth::user()?->role === 'Notaris';
 
         return view('pages.konfigurasi.index', compact(
             'konfigurasi',
             'ppatConfiguration',
+            'ppatTagKeys',
             'canManagePpatConfiguration'
         ));
     }
@@ -43,15 +63,12 @@ class KonfigurasiController extends Controller
             'pattern' => 'required|string|max:255',
             'reset_period' => 'required|in:tahunan,bulanan',
             'starting_number' => 'required|integer|min:1',
-            'ppat_name' => 'nullable|string|max:150',
-            'work_area' => 'nullable|string|max:255',
-            'appointment_number' => 'nullable|string|max:150',
-            'appointment_date' => 'nullable|string|max:150',
-            'office_address' => 'nullable|string|max:255',
+            'ppat_values' => ['nullable', 'array'],
+            'ppat_values.*' => ['nullable', 'string', 'max:255'],
         ]);
 
         $konfigurasi = KonfigurasiNomor::first();
-        
+
         if ($konfigurasi) {
             $konfigurasi->update([
                 'pattern' => $validated['pattern'],
@@ -67,13 +84,7 @@ class KonfigurasiController extends Controller
         }
 
         if (Auth::user()?->role === 'Notaris') {
-            $this->ppatConfigurationService->updateConfiguration([
-                'ppat_name' => (string) ($validated['ppat_name'] ?? ''),
-                'work_area' => (string) ($validated['work_area'] ?? ''),
-                'appointment_number' => (string) ($validated['appointment_number'] ?? ''),
-                'appointment_date' => (string) ($validated['appointment_date'] ?? ''),
-                'office_address' => (string) ($validated['office_address'] ?? ''),
-            ]);
+            $this->ppatConfigurationService->updateConfiguration($validated['ppat_values'] ?? []);
         }
 
         return redirect()->route('konfigurasi.index')

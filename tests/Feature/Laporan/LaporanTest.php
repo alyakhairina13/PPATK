@@ -8,7 +8,7 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 uses(RefreshDatabase::class);
 
 test('laporan page is accessible', function () {
-    $user = User::factory()->create();
+    $user = User::factory()->notaris()->create();
     
     $response = $this->actingAs($user)->get('/laporan');
     
@@ -17,7 +17,7 @@ test('laporan page is accessible', function () {
 });
 
 test('can generate report with filters', function () {
-    $user = User::factory()->create();
+    $user = User::factory()->notaris()->create();
     
     Akta::factory()->count(5)->create([
         'status_workflow' => 'Selesai',
@@ -38,7 +38,7 @@ test('can generate report with filters', function () {
 });
 
 test('can export report', function () {
-    $user = User::factory()->create();
+    $user = User::factory()->notaris()->create();
     
     Akta::factory()->count(10)->create(['status_workflow' => 'Selesai']);
     
@@ -49,7 +49,7 @@ test('can export report', function () {
 });
 
 test('can filter report by date range', function () {
-    $user = User::factory()->create();
+    $user = User::factory()->notaris()->create();
     
     Akta::factory()->count(3)->create([
         'tanggal_dibuat' => now()->subDays(10),
@@ -70,7 +70,7 @@ test('can filter report by date range', function () {
 });
 
 test('can filter report by jenis template', function () {
-    $user = User::factory()->create();
+    $user = User::factory()->notaris()->create();
     
     Akta::factory()->count(3)->create(['jenis_template' => 'AJB']);
     Akta::factory()->count(2)->create(['jenis_template' => 'Perjanjian']);
@@ -84,7 +84,7 @@ test('can filter report by jenis template', function () {
 });
 
 test('can filter report by status workflow', function () {
-    $user = User::factory()->create();
+    $user = User::factory()->notaris()->create();
     
     Akta::factory()->count(4)->create(['status_workflow' => 'Draft']);
     Akta::factory()->count(3)->create(['status_workflow' => 'Diverifikasi']);
@@ -99,7 +99,7 @@ test('can filter report by status workflow', function () {
 });
 
 test('report shows summary statistics', function () {
-    $user = User::factory()->create();
+    $user = User::factory()->notaris()->create();
     
     Akta::factory()->count(10)->create(['status_workflow' => 'Selesai']);
     Akta::factory()->count(5)->create(['status_workflow' => 'Draft']);
@@ -112,18 +112,42 @@ test('report shows summary statistics', function () {
 });
 
 test('can export report as excel', function () {
-    $user = User::factory()->create();
-    
+    $user = User::factory()->notaris()->create();
+
     Akta::factory()->count(10)->create(['status_workflow' => 'Selesai']);
-    
+
     $response = $this->actingAs($user)->get('/laporan/export/excel?format=excel');
-    
+
     $response->assertStatus(200);
-    $response->assertHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+    $response->assertHeader('Content-Type', 'text/csv; charset=utf-8');
+});
+
+test('pdf export contains report data and statistics', function () {
+    $user = User::factory()->notaris()->create();
+    $klien = Klien::factory()->create(['nama_lengkap' => 'John Doe']);
+
+    Akta::factory()->create([
+        'id_klien' => $klien->id_klien,
+        'jenis_template' => 'AJB',
+        'status_workflow' => 'Selesai',
+    ]);
+
+    $response = $this->actingAs($user)->get('/laporan/export/pdf');
+
+    $response->assertStatus(200);
+    $response->assertHeader('Content-Type', 'application/pdf');
+
+    $body = $response->baseResponse->getContent();
+
+    expect($body)->toStartWith('%PDF')
+        ->and($body)->toContain('Statistik per Status')
+        ->and($body)->toContain('Statistik per Jenis Akta')
+        ->and($body)->toContain('Ringkasan Bulanan')
+        ->and($body)->toContain('John Doe');
 });
 
 test('can filter report by user', function () {
-    $user1 = User::factory()->create(['nama_lengkap' => 'User One']);
+    $user1 = User::factory()->notaris()->create(['nama_lengkap' => 'User One']);
     $user2 = User::factory()->create(['nama_lengkap' => 'User Two']);
     
     Akta::factory()->count(3)->create(['id_user' => $user1->id_user]);
@@ -138,7 +162,7 @@ test('can filter report by user', function () {
 });
 
 test('report displays klien information', function () {
-    $user = User::factory()->create();
+    $user = User::factory()->notaris()->create();
     $klien = Klien::factory()->create(['nama_lengkap' => 'John Doe']);
     
     Akta::factory()->create([
@@ -154,12 +178,20 @@ test('report displays klien information', function () {
 
 test('unauthenticated user cannot access laporan', function () {
     $response = $this->get('/laporan');
-    
+
     $response->assertRedirect('/login');
 });
 
+test('admin staff cannot access laporan', function () {
+    $admin = User::factory()->adminStaff()->create();
+
+    $response = $this->actingAs($admin)->get('/laporan');
+
+    $response->assertRedirect('/akta');
+});
+
 test('report can be filtered by month and year', function () {
-    $user = User::factory()->create();
+    $user = User::factory()->notaris()->create();
     
     Akta::factory()->count(5)->create([
         'tanggal_dibuat' => now()->setMonth(6)->setYear(2026),

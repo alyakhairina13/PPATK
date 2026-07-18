@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\TemplateAkta;
+use App\Services\TagAliasService;
 use App\Services\TemplateAktaService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
@@ -10,15 +11,70 @@ use Illuminate\Support\Str;
 
 class TemplateAktaController extends Controller
 {
-    public function __construct(private readonly TemplateAktaService $templateAktaService)
-    {
+    public function __construct(
+        private readonly TemplateAktaService $templateAktaService,
+        private readonly TagAliasService $tagAliasService
+    ) {
     }
 
     public function index()
     {
         $templates = TemplateAkta::withCount('akta')->orderBy('title')->get();
 
-        return view('pages.akta.templates', compact('templates'));
+        $prefixAliases = $this->tagAliasService->prefixAliases();
+        $tagAliases = $this->tagAliasService->tagAliases();
+
+        $detectedPrefixes = [];
+        $detectedTags = [];
+
+        $templates->each(function (TemplateAkta $template) use (&$detectedPrefixes, &$detectedTags) {
+            $template->setAttribute(
+                'grouped_tags',
+                TemplateAktaService::groupTagsByPrefix($template->tags ?? [])
+            );
+
+            foreach ($template->tags ?? [] as $tag) {
+                $detectedTags[$tag] = true;
+                $prefix = TemplateAktaService::groupPrefixForTag($tag);
+
+                if ($prefix !== 'lainnya') {
+                    $detectedPrefixes[$prefix] = true;
+                }
+            }
+        });
+
+        $prefixKeys = array_unique(array_merge(array_keys($prefixAliases), array_keys($detectedPrefixes)));
+        sort($prefixKeys);
+
+        $tagKeys = array_unique(array_merge(array_keys($tagAliases), array_keys($detectedTags)));
+        sort($tagKeys);
+
+        return view('pages.akta.templates', compact(
+            'templates',
+            'prefixAliases',
+            'tagAliases',
+            'prefixKeys',
+            'tagKeys',
+        ));
+    }
+
+    public function updateAliases(Request $request)
+    {
+        $validated = $request->validate([
+            'prefix_aliases' => ['nullable', 'array'],
+            'prefix_aliases.*' => ['nullable', 'string', 'max:150'],
+            'tag_aliases' => ['nullable', 'array'],
+            'tag_aliases.*' => ['nullable', 'string', 'max:150'],
+        ]);
+
+        $this->tagAliasService->update(
+            $validated['prefix_aliases'] ?? [],
+            $validated['tag_aliases'] ?? [],
+        );
+
+        return redirect()
+            ->route('akta.templates.index')
+            ->with('success', 'Alias prefix dan tag berhasil disimpan.');
     }
 
     public function store(Request $request)

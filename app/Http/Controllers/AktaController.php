@@ -54,13 +54,17 @@ class AktaController extends Controller
         $templateOptions = $this->buildTemplateOptions($templates);
         $lockedTemplateValues = $this->ppatConfigurationService->templateDefaults();
         $formValues = $this->sanitizeTemplateFields(old('template_fields', []));
+        $prefixGroupLabels = TemplateAktaService::prefixGroupLabels();
+        $tagLabels = TemplateAktaService::tagLabels();
 
         return view('pages.akta.create', compact(
             'kliens',
             'templates',
             'templateOptions',
             'lockedTemplateValues',
-            'formValues'
+            'formValues',
+            'prefixGroupLabels',
+            'tagLabels'
         ));
     }
 
@@ -125,6 +129,8 @@ class AktaController extends Controller
         $formValues = old('template_fields')
             ? $this->sanitizeTemplateFields(old('template_fields', []))
             : $this->mergeWithLockedTemplateDefaults($akta->content_fields);
+        $prefixGroupLabels = TemplateAktaService::prefixGroupLabels();
+        $tagLabels = TemplateAktaService::tagLabels();
 
         return view('pages.akta.edit', compact(
             'akta',
@@ -132,7 +138,9 @@ class AktaController extends Controller
             'templates',
             'templateOptions',
             'lockedTemplateValues',
-            'formValues'
+            'formValues',
+            'prefixGroupLabels',
+            'tagLabels'
         ));
     }
 
@@ -323,7 +331,7 @@ class AktaController extends Controller
         $lockedTemplateValues = $this->ppatConfigurationService->templateDefaults();
 
         foreach ($template->tags ?? [] as $tag) {
-            if (array_key_exists($tag, $lockedTemplateValues)) {
+            if ($this->ppatConfigurationService->isAutofillTag($tag) && array_key_exists($tag, $lockedTemplateValues)) {
                 $payload[$tag] = $lockedTemplateValues[$tag];
                 continue;
             }
