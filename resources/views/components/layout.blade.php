@@ -15,83 +15,107 @@
     <div class="flex h-full flex-col">
         <!-- Topbar -->
         <header class="frosted-glass shrink-0 border-b border-border-hairline z-50">
-            <div class="flex items-center justify-between px-4 py-3 sm:px-5">
-                <div class="flex items-center gap-4">
-                    <button id="sidebar-toggle" class="lg:hidden p-1.5 hover:bg-surface-pearl rounded-md">
-                        <span class="material-symbols-outlined text-[22px]">menu</span>
+            <div class="flex items-center justify-between px-4 py-2 sm:px-5">
+                <div class="flex items-center gap-3">
+                    <button id="sidebar-toggle" class="lg:hidden p-1 hover:bg-surface-pearl rounded-md">
+                        <span class="material-symbols-outlined text-[20px]">menu</span>
                     </button>
-                    <h1 class="text-lg font-bold text-primary">SIM Akta Notaris & PPAT</h1>
+                    <!-- Visual Brand Logo, very sleek -->
+                    <div class="flex items-center gap-2">
+                        <div class="w-6 h-6 rounded bg-gradient-to-br from-blue-600 to-teal-600 flex items-center justify-center text-white font-bold text-[11px] tracking-wider shadow-sm">S</div>
+                        <h1 class="text-xs font-bold tracking-wider text-slate-800 uppercase">SIM Akta Notaris & PPAT</h1>
+                    </div>
                 </div>
                 
-                <div class="flex items-center gap-4">
+                <div class="flex items-center gap-3">
                     <!-- Notification Bell -->
-                    <button class="relative p-1.5 hover:bg-surface-pearl rounded-md">
-                        <span class="material-symbols-outlined text-[22px]">notifications</span>
-                        <span class="absolute top-1 right-1 w-2 h-2 bg-error rounded-full"></span>
+                    <button class="relative p-1 hover:bg-surface-pearl rounded-md text-slate-500 hover:text-slate-800">
+                        <span class="material-symbols-outlined text-[20px]">notifications</span>
+                        <span class="absolute top-1 right-1 w-1.5 h-1.5 bg-error rounded-full ring-2 ring-white"></span>
                     </button>
                     
-                    <!-- User Info -->
-                    <div class="flex items-center gap-3">
-                        <div class="text-right hidden sm:block">
-                            <p class="font-medium text-sm">{{ auth()->user()->nama_lengkap }}</p>
-                            <p class="text-xs text-text-muted">{{ auth()->user()->role }}</p>
-                        </div>
-                        <div class="w-9 h-9 bg-primary text-white rounded-full flex items-center justify-center font-medium text-sm">
-                            {{ strtoupper(substr(auth()->user()->nama_lengkap, 0, 1)) }}
+                    <div class="h-4 w-px bg-black/10"></div>
+                    
+                    <!-- Compact User Profile Info with Dropdown -->
+                    <div class="relative">
+                        <button onclick="toggleUserDropdown()" class="flex items-center gap-2.5 p-1 rounded-md hover:bg-black/5 transition-all text-left">
+                            <div class="text-right hidden sm:block">
+                                <p class="font-semibold text-xs leading-none text-slate-800">{{ auth()->user()->nama_lengkap }}</p>
+                                <p class="text-[9px] text-text-muted mt-0.5 font-medium leading-none">{{ auth()->user()->role }}</p>
+                            </div>
+                            <div class="w-7 h-7 bg-primary text-white rounded-md flex items-center justify-center font-semibold text-xs shadow-sm border border-white/20">
+                                {{ strtoupper(substr(auth()->user()->nama_lengkap, 0, 1)) }}
+                            </div>
+                            <span class="material-symbols-outlined text-[16px] text-slate-400">keyboard_arrow_down</span>
+                        </button>
+                        
+                        <!-- Dropdown Menu -->
+                        <div id="user-dropdown" class="hidden absolute right-0 mt-1.5 w-44 bg-white/95 backdrop-blur-md border border-black/5 rounded-lg shadow-lg py-1 z-50">
+                            <!-- Logout Button Trigger -->
+                            <button type="button" onclick="confirmLogout()" class="w-full flex items-center gap-2 px-3 py-1.5 text-xs text-red-600 hover:bg-red-50 text-left">
+                                <span class="material-symbols-outlined text-[16px]">logout</span> Keluar
+                            </button>
+                            <form method="POST" action="{{ route('logout') }}" id="logout-form" class="hidden">
+                                @csrf
+                            </form>
                         </div>
                     </div>
-                    
-                    <!-- Logout Button -->
-                    <form method="POST" action="{{ route('logout') }}" id="logout-form">
-                        @csrf
-                        <button type="button" onclick="confirmLogout()" class="p-1.5 hover:bg-surface-pearl rounded-md text-error">
-                            <span class="material-symbols-outlined text-[22px]">logout</span>
-                        </button>
-                    </form>
                 </div>
             </div>
         </header>
 
         <div class="flex flex-1 min-h-0 overflow-hidden">
             <!-- Sidebar -->
-            <aside id="sidebar" class="glass-sidebar fixed left-0 top-[61px] bottom-0 z-40 w-60 shrink-0 -translate-x-full transform overflow-y-auto transition-transform duration-300 ease-in-out lg:relative lg:top-auto lg:bottom-auto lg:mt-0 lg:h-full lg:translate-x-0 lg:overflow-y-auto">
-                <nav class="space-y-1.5 p-3">
+            <aside id="sidebar" class="glass-sidebar fixed left-0 top-[49px] bottom-0 z-40 w-52 shrink-0 -translate-x-full transform overflow-y-auto transition-transform duration-300 ease-in-out lg:relative lg:top-auto lg:bottom-auto lg:mt-0 lg:h-full lg:translate-x-0 lg:overflow-y-auto">
+                <div class="p-2.5 text-[9px] font-bold text-slate-400 uppercase tracking-widest px-4.5 pt-4 pb-1.5">Menu Utama</div>
+                <nav class="space-y-0.5 p-2">
                     @if(auth()->user()->isNotaris())
                     <a href="{{ route('dashboard') }}" class="sidebar-item {{ request()->routeIs('dashboard') ? 'active' : '' }}">
-                        <span class="material-symbols-outlined text-[20px] mr-3">home</span>
+                        <span class="material-symbols-outlined text-[18px] mr-2">home</span>
                         Dashboard
                     </a>
                     @endif
 
                     <a href="{{ route('klien.index') }}" class="sidebar-item {{ request()->routeIs('klien.*') ? 'active' : '' }}">
-                        <span class="material-symbols-outlined text-[20px] mr-3">groups</span>
+                        <span class="material-symbols-outlined text-[18px] mr-2">groups</span>
                         Data Klien
                     </a>
 
                     <a href="{{ route('akta.index') }}" class="sidebar-item {{ request()->routeIs('akta.*') ? 'active' : '' }}">
-                        <span class="material-symbols-outlined text-[20px] mr-3">description</span>
+                        <span class="material-symbols-outlined text-[18px] mr-2">description</span>
                         Akta
                     </a>
 
                     <a href="{{ route('repertorium.index') }}" class="sidebar-item {{ request()->routeIs('repertorium.*') ? 'active' : '' }}">
-                        <span class="material-symbols-outlined text-[20px] mr-3">menu_book</span>
+                        <span class="material-symbols-outlined text-[18px] mr-2">menu_book</span>
                         Repertorium
                     </a>
 
                     @if(auth()->user()->isNotaris())
+                    <div class="p-2.5 text-[9px] font-bold text-slate-400 uppercase tracking-widest px-4.5 pt-5.5 pb-1.5">Administrasi</div>
+                    
                     <a href="{{ route('laporan.index') }}" class="sidebar-item {{ request()->routeIs('laporan.*') ? 'active' : '' }}">
-                        <span class="material-symbols-outlined text-[20px] mr-3">analytics</span>
+                        <span class="material-symbols-outlined text-[18px] mr-2">analytics</span>
                         Laporan
                     </a>
                     @endif
 
                     @if(auth()->user()->isNotaris())
                     <a href="{{ route('konfigurasi.index') }}" class="sidebar-item {{ request()->routeIs('konfigurasi.*') ? 'active' : '' }}">
-                        <span class="material-symbols-outlined text-[20px] mr-3">settings</span>
+                        <span class="material-symbols-outlined text-[18px] mr-2">settings</span>
                         Konfigurasi
                     </a>
                     @endif
                 </nav>
+
+                <!-- Bottom Status -->
+                <div class="absolute bottom-4 left-4 right-4 p-2.5 rounded-lg bg-slate-900/5 border border-black/5 flex items-center justify-between">
+                    <div class="flex items-center gap-2">
+                        <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
+                        <span class="text-[10px] font-semibold text-slate-600">Server Aktif</span>
+                    </div>
+                    <span class="text-[9px] text-slate-400 font-medium font-mono">v2.4</span>
+                </div>
             </aside>
 
             <!-- Overlay for mobile -->
@@ -201,6 +225,23 @@
         sidebarOverlay?.addEventListener('click', () => {
             sidebar.classList.add('-translate-x-full');
             sidebarOverlay.classList.add('hidden');
+        });
+
+        // User dropdown menu toggle
+        function toggleUserDropdown() {
+            const dropdown = document.getElementById('user-dropdown');
+            dropdown.classList.toggle('hidden');
+        }
+
+        // Close dropdown when clicking outside
+        window.addEventListener('click', function(e) {
+            const dropdown = document.getElementById('user-dropdown');
+            if (dropdown) {
+                const button = dropdown.previousElementSibling || dropdown.parentElement;
+                if (button && !button.contains(e.target) && !dropdown.contains(e.target)) {
+                    dropdown.classList.add('hidden');
+                }
+            }
         });
 
         // Logout modal
