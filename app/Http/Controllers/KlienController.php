@@ -99,6 +99,7 @@ class KlienController extends Controller
                         'alamat' => $data['alamat'] ?? '',
                         'nomor_telepon' => $data['nomor_telepon'] ?? '',
                         'pekerjaan' => $data['pekerjaan'] ?? '',
+                        'npwp' => $data['npwp'] ?? '-',
                     ]
                 );
             }

@@ -21,7 +21,7 @@ class StoreKlienRequest extends FormRequest
             'alamat' => 'required|string',
             'nomor_telepon' => 'required|string|max:20',
             'pekerjaan' => 'required|string|max:100',
-            'npwp' => 'nullable|string|max:30',
+            'npwp' => 'required|string|max:30',
         ];
     }
 
@@ -45,6 +45,7 @@ class StoreKlienRequest extends FormRequest
             'nik.digits' => 'NIK harus terdiri dari 16 digit angka.',
             'nik.unique' => 'NIK sudah terdaftar dalam sistem.',
             'jenis_kelamin.in' => 'Jenis kelamin harus Laki-laki atau Perempuan.',
+            'npwp.required' => 'NPWP wajib diisi.',
         ];
     }
 }

@@ -32,8 +32,8 @@
 
                         <div class="grid grid-cols-1 gap-6 md:grid-cols-2">
                             <div>
-                                <label class="mb-2 block text-sm font-medium text-gray-700">Klien <span class="text-red-500">*</span></label>
-                                <select name="id_klien" class="w-full appearance-none rounded-md border border-gray-300 bg-white px-4 py-2 pr-10 text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500 @error('id_klien') border-error @enderror" required>
+                                <label for="id_klien" class="mb-2 block text-sm font-medium text-gray-700">Pihak 1 <span class="text-red-500">*</span></label>
+                                <select name="id_klien" id="id_klien" class="w-full appearance-none rounded-md border border-gray-300 bg-white px-4 py-2 pr-10 text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500 @error('id_klien') border-error @enderror" required>
                                     @foreach($kliens as $klien)
                                         <option value="{{ $klien->id_klien }}" {{ old('id_klien', $akta->id_klien) == $klien->id_klien ? 'selected' : '' }}>
                                             {{ $klien->nama_lengkap }}
@@ -43,6 +43,18 @@
                             </div>
 
                             <div>
+                                <label for="id_klien_pihak2" class="mb-2 block text-sm font-medium text-gray-700">Pihak 2</label>
+                                <select name="id_klien_pihak2" id="id_klien_pihak2" class="w-full appearance-none rounded-md border border-gray-300 bg-white px-4 py-2 pr-10 text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500 @error('id_klien_pihak2') border-error @enderror">
+                                    <option value="">Tidak ada (Opsional)</option>
+                                    @foreach($kliens as $klien)
+                                        <option value="{{ $klien->id_klien }}" {{ old('id_klien_pihak2', $akta->id_klien_pihak2) == $klien->id_klien ? 'selected' : '' }}>
+                                            {{ $klien->nama_lengkap }}
+                                        </option>
+                                    @endforeach
+                                </select>
+                            </div>
+
+                            <div class="md:col-span-2">
                                 <label class="mb-2 block text-sm font-medium text-gray-700">Templat Akta <span class="text-red-500">*</span></label>
                                 <select id="template_id" name="template_id" class="w-full appearance-none rounded-md border border-gray-300 bg-white px-4 py-2 pr-10 text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500 @error('template_id') border-error @enderror" required>
                                     <option value="">Pilih Templat</option>
@@ -130,11 +142,19 @@
             <div class="space-y-6">
                 <div class="bg-white shadow-sm rounded-lg">
                     <div class="px-6 py-4 border-b border-gray-200">
-                        <h3 class="text-lg font-semibold text-gray-800">Informasi Klien</h3>
+                        <h3 class="text-lg font-semibold text-gray-800">Informasi Pihak</h3>
                     </div>
-                    <div class="px-6 py-6 text-sm space-y-2">
-                        <p><span class="text-gray-500">Nama:</span> {{ $akta->klien->nama_lengkap ?? '-' }}</p>
-                        <p><span class="text-gray-500">NIK:</span> {{ $akta->klien->nik ?? '-' }}</p>
+                    <div class="px-6 py-6 text-sm space-y-3">
+                        <div class="space-y-1">
+                            <p class="text-xs font-semibold uppercase tracking-wide text-gray-400">Pihak 1</p>
+                            <p><span class="text-gray-500">Nama:</span> {{ $akta->klien->nama_lengkap ?? '-' }}</p>
+                            <p><span class="text-gray-500">NIK:</span> {{ $akta->klien->nik ?? '-' }}</p>
+                        </div>
+                        <div class="border-t border-gray-100 pt-3 space-y-1">
+                            <p class="text-xs font-semibold uppercase tracking-wide text-gray-400">Pihak 2</p>
+                            <p><span class="text-gray-500">Nama:</span> {{ $akta->klienPihak2->nama_lengkap ?? '-' }}</p>
+                            <p><span class="text-gray-500">NIK:</span> {{ $akta->klienPihak2->nik ?? '-' }}</p>
+                        </div>
                     </div>
                 </div>
 
@@ -170,8 +190,14 @@
         const initialValues = @json($formValues);
         const groupLabels = @json($prefixGroupLabels);
         const tagLabels = @json($tagLabels);
+        const klienData = @json($klienData);
+        const klienFieldMap = @json($klienFieldMap);
         const templateSelect = document.getElementById('template_id');
+        const pihak1Select = document.getElementById('id_klien');
+        const pihak2Select = document.getElementById('id_klien_pihak2');
         const fieldsContainer = document.getElementById('template-fields-container');
+
+        const PIHAK_PREFIXES = ['dpihak1', 'dpihak2'];
 
         function escapeHtml(value) {
             return String(value)
@@ -250,9 +276,47 @@
             return camelToLabel(remainder) || camelToLabel(tag);
         }
 
+        function klienFieldForTag(tag) {
+            const prefix = groupPrefixForTag(tag);
+
+            if (!PIHAK_PREFIXES.includes(prefix)) {
+                return null;
+            }
+
+            const suffix = tag.slice(prefix.length).replace(/^_+/, '');
+
+            return Object.prototype.hasOwnProperty.call(klienFieldMap, suffix) ? klienFieldMap[suffix] : null;
+        }
+
+        function klienValueForTag(tag) {
+            const field = klienFieldForTag(tag);
+
+            if (field === null) {
+                return null;
+            }
+
+            const prefix = groupPrefixForTag(tag);
+            const selectedId = prefix === 'dpihak1' ? pihak1Select.value : pihak2Select.value;
+            const klien = selectedId ? (klienData[selectedId] || null) : null;
+
+            return klien && Object.prototype.hasOwnProperty.call(klien, field) ? klien[field] : '';
+        }
+
         function renderField(tag) {
-            const isLocked = Object.prototype.hasOwnProperty.call(lockedTemplateValues, tag);
-            const value = isLocked ? lockedTemplateValues[tag] : (initialValues[tag] ?? '');
+            const isPpatLocked = Object.prototype.hasOwnProperty.call(lockedTemplateValues, tag);
+            const klienField = klienFieldForTag(tag);
+            const isKlienLocked = klienField !== null;
+            const isLocked = isPpatLocked || isKlienLocked;
+            let value;
+
+            if (isPpatLocked) {
+                value = lockedTemplateValues[tag];
+            } else if (isKlienLocked) {
+                value = klienValueForTag(tag);
+            } else {
+                value = initialValues[tag] ?? '';
+            }
+
             const label = labelForTag(tag);
 
             return `
@@ -303,14 +367,23 @@
             });
 
             fieldsContainer.innerHTML = order.map((prefix) => {
-                const isAutofill = groups[prefix].some((tag) => Object.prototype.hasOwnProperty.call(lockedTemplateValues, tag));
+                const isPpatAutofill = groups[prefix].some((tag) => Object.prototype.hasOwnProperty.call(lockedTemplateValues, tag));
+                const isKlienAutofill = groups[prefix].some((tag) => klienFieldForTag(tag) !== null);
+                let badge = '';
+
+                if (isPpatAutofill) {
+                    badge = '<span class="inline-flex items-center rounded-full bg-blue-50 px-2 py-0.5 text-xs font-medium text-blue-700 ring-1 ring-blue-200">Diisi otomatis dari Konfigurasi PPAT</span>';
+                } else if (isKlienAutofill) {
+                    const source = groupLabelForPrefix(prefix);
+                    badge = `<span class="inline-flex items-center rounded-full bg-emerald-50 px-2 py-0.5 text-xs font-medium text-emerald-700 ring-1 ring-emerald-200">Diisi otomatis dari data ${escapeHtml(source)}</span>`;
+                }
 
                 return `
                     <div class="md:col-span-2">
                         <div class="rounded-lg border border-gray-200 bg-white p-4">
                             <div class="mb-3 flex flex-wrap items-center gap-2">
                                 <h4 class="text-sm font-semibold text-gray-800">${escapeHtml(groupLabelForPrefix(prefix))}</h4>
-                                ${isAutofill ? '<span class="inline-flex items-center rounded-full bg-blue-50 px-2 py-0.5 text-xs font-medium text-blue-700 ring-1 ring-blue-200">Diisi otomatis dari Konfigurasi PPAT</span>' : ''}
+                                ${badge}
                             </div>
                             <div class="grid grid-cols-1 gap-4 md:grid-cols-2">
                                 ${groups[prefix].map(renderField).join('')}
@@ -322,6 +395,8 @@
         }
 
         templateSelect?.addEventListener('change', renderTemplateFields);
+        pihak1Select?.addEventListener('change', renderTemplateFields);
+        pihak2Select?.addEventListener('change', renderTemplateFields);
         renderTemplateFields();
 
         function submitVerification() {

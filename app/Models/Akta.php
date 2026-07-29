@@ -17,6 +17,7 @@ class Akta extends Model
 
     protected $fillable = [
         'id_klien',
+        'id_klien_pihak2',
         'id_user',
         'template_id',
         'jenis_template',
@@ -37,6 +38,11 @@ class Akta extends Model
     public function klien(): BelongsTo
     {
         return $this->belongsTo(Klien::class, 'id_klien');
+    }
+
+    public function klienPihak2(): BelongsTo
+    {
+        return $this->belongsTo(Klien::class, 'id_klien_pihak2');
     }
 
     public function user(): BelongsTo
