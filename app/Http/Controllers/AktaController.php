@@ -7,6 +7,7 @@ use App\Models\Klien;
 use App\Models\Repertorium;
 use App\Models\TemplateAkta;
 use App\Services\PpatConfigurationService;
+use App\Services\KlienAutofillService;
 use App\Models\VersionHistory;
 use App\Services\TemplateAktaService;
 use Illuminate\Http\Request;
@@ -17,7 +18,8 @@ class AktaController extends Controller
 {
     public function __construct(
         private readonly TemplateAktaService $templateAktaService,
-        private readonly PpatConfigurationService $ppatConfigurationService
+        private readonly PpatConfigurationService $ppatConfigurationService,
+        private readonly KlienAutofillService $klienAutofillService
     ) {
     }
 
@@ -54,6 +56,8 @@ class AktaController extends Controller
         $templateOptions = $this->buildTemplateOptions($templates);
         $lockedTemplateValues = $this->ppatConfigurationService->templateDefaults();
         $formValues = $this->sanitizeTemplateFields(old('template_fields', []));
+        $klienData = $this->buildKlienData($kliens);
+        $klienFieldMap = $this->klienAutofillService->suffixFieldMap();
         $prefixGroupLabels = TemplateAktaService::prefixGroupLabels();
         $tagLabels = TemplateAktaService::tagLabels();
 
@@ -63,6 +67,8 @@ class AktaController extends Controller
             'templateOptions',
             'lockedTemplateValues',
             'formValues',
+            'klienData',
+            'klienFieldMap',
             'prefixGroupLabels',
             'tagLabels'
         ));
@@ -72,17 +78,21 @@ class AktaController extends Controller
     {
         $validated = $request->validate([
             'id_klien' => 'required|exists:klien,id_klien',
+            'id_klien_pihak2' => 'nullable|exists:klien,id_klien',
             'template_id' => 'required|exists:template_akta,id_template_akta',
             'template_fields' => 'nullable|array',
         ]);
 
         $template = TemplateAkta::findOrFail($validated['template_id']);
-        $templateFields = $this->buildTemplateFieldPayload($template, $validated['template_fields'] ?? []);
+        $pihak1 = Klien::find($validated['id_klien']);
+        $pihak2 = Klien::find($validated['id_klien_pihak2'] ?? null);
+        $templateFields = $this->buildTemplateFieldPayload($template, $validated['template_fields'] ?? [], $pihak1, $pihak2);
         $contentJson = json_encode($templateFields, JSON_UNESCAPED_UNICODE) ?: '{}';
         $now = now();
 
         $akta = Akta::create([
             'id_klien' => $validated['id_klien'],
+            'id_klien_pihak2' => $validated['id_klien_pihak2'] ?: null,
             'id_user' => Auth::id(),
             'template_id' => $template->id_template_akta,
             'jenis_template' => $template->title,
@@ -106,7 +116,7 @@ class AktaController extends Controller
 
     public function show($id)
     {
-        $akta = Akta::with(['klien', 'user', 'lampiran', 'versionHistory', 'repertorium', 'templateAkta'])
+        $akta = Akta::with(['klien', 'klienPihak2', 'user', 'lampiran', 'versionHistory', 'repertorium', 'templateAkta'])
             ->findOrFail($id);
         $resolvedContentFields = $this->resolveDisplayContentFields($akta);
 
@@ -115,7 +125,7 @@ class AktaController extends Controller
 
     public function edit($id)
     {
-        $akta = Akta::with(['klien', 'lampiran', 'versionHistory', 'templateAkta'])->findOrFail($id);
+        $akta = Akta::with(['klien', 'klienPihak2', 'lampiran', 'versionHistory', 'templateAkta'])->findOrFail($id);
 
         if ($akta->status_workflow === 'Selesai') {
             return redirect()->route('akta.show', $akta->id_akta)
@@ -129,6 +139,8 @@ class AktaController extends Controller
         $formValues = old('template_fields')
             ? $this->sanitizeTemplateFields(old('template_fields', []))
             : $this->mergeWithLockedTemplateDefaults($akta->content_fields);
+        $klienData = $this->buildKlienData($kliens);
+        $klienFieldMap = $this->klienAutofillService->suffixFieldMap();
         $prefixGroupLabels = TemplateAktaService::prefixGroupLabels();
         $tagLabels = TemplateAktaService::tagLabels();
 
@@ -139,6 +151,8 @@ class AktaController extends Controller
             'templateOptions',
             'lockedTemplateValues',
             'formValues',
+            'klienData',
+            'klienFieldMap',
             'prefixGroupLabels',
             'tagLabels'
         ));
@@ -154,12 +168,15 @@ class AktaController extends Controller
 
         $validated = $request->validate([
             'id_klien' => 'required|exists:klien,id_klien',
+            'id_klien_pihak2' => 'nullable|exists:klien,id_klien',
             'template_id' => 'required|exists:template_akta,id_template_akta',
             'template_fields' => 'nullable|array',
         ]);
 
         $template = TemplateAkta::findOrFail($validated['template_id']);
-        $templateFields = $this->buildTemplateFieldPayload($template, $validated['template_fields'] ?? []);
+        $pihak1 = Klien::find($validated['id_klien']);
+        $pihak2 = Klien::find($validated['id_klien_pihak2'] ?? null);
+        $templateFields = $this->buildTemplateFieldPayload($template, $validated['template_fields'] ?? [], $pihak1, $pihak2);
         $contentJson = json_encode($templateFields, JSON_UNESCAPED_UNICODE) ?: '{}';
         $lastVersion = VersionHistory::where('id_akta', $akta->id_akta)
             ->orderByDesc('versi_ke')
@@ -177,6 +194,7 @@ class AktaController extends Controller
 
         $akta->update([
             'id_klien' => $validated['id_klien'],
+            'id_klien_pihak2' => $validated['id_klien_pihak2'] ?: null,
             'template_id' => $template->id_template_akta,
             'jenis_template' => $template->title,
             'konten_teks_utama' => $contentJson,
@@ -202,7 +220,7 @@ class AktaController extends Controller
 
     public function download($id)
     {
-        $akta = Akta::with('templateAkta')->findOrFail($id);
+        $akta = Akta::with(['klien', 'klienPihak2', 'templateAkta'])->findOrFail($id);
 
         if (! $akta->templateAkta) {
             return back()->with('error', 'Template akta belum terhubung pada data ini.');
@@ -211,7 +229,7 @@ class AktaController extends Controller
         try {
             $outputPath = $this->templateAktaService->renderMergedDocument(
                 $akta->templateAkta,
-                $this->mergeWithLockedTemplateDefaults($akta->content_fields),
+                $this->lockedValuesForAkta($akta),
                 $akta->id_akta
             );
         } catch (\Throwable $exception) {
@@ -325,7 +343,7 @@ class AktaController extends Controller
      * @param  array<string, mixed>  $fields
      * @return array<string, string>
      */
-    private function buildTemplateFieldPayload(TemplateAkta $template, array $fields): array
+    private function buildTemplateFieldPayload(TemplateAkta $template, array $fields, ?Klien $pihak1 = null, ?Klien $pihak2 = null): array
     {
         $payload = [];
         $lockedTemplateValues = $this->ppatConfigurationService->templateDefaults();
@@ -333,6 +351,11 @@ class AktaController extends Controller
         foreach ($template->tags ?? [] as $tag) {
             if ($this->ppatConfigurationService->isAutofillTag($tag) && array_key_exists($tag, $lockedTemplateValues)) {
                 $payload[$tag] = $lockedTemplateValues[$tag];
+                continue;
+            }
+
+            if ($this->klienAutofillService->isAutofillTag($tag)) {
+                $payload[$tag] = $this->klienAutofillService->resolveTagValueForClients($tag, $pihak1, $pihak2);
                 continue;
             }
 
@@ -373,11 +396,32 @@ class AktaController extends Controller
     }
 
     /**
+     * Resolve the full payload for an akta: stored content merged with the
+     * PPAT configuration defaults and the live Pihak 1 / Pihak 2 klien data.
+     *
+     * @return array<string, string>
+     */
+    private function lockedValuesForAkta(Akta $akta): array
+    {
+        $fields = $this->mergeWithLockedTemplateDefaults($akta->content_fields);
+
+        return array_merge(
+            $fields,
+            $this->klienAutofillService->lockedValuesForTags(
+                $akta->templateAkta->tags ?? [],
+                $akta->klien,
+                $akta->klienPihak2,
+            ),
+        );
+    }
+
+    /**
+     * @param  array<string, string>  $fields
      * @return array<string, string>
      */
     private function resolveDisplayContentFields(Akta $akta): array
     {
-        $resolved = $this->mergeWithLockedTemplateDefaults($akta->content_fields);
+        $resolved = $this->lockedValuesForAkta($akta);
         $tags = $akta->templateAkta->tags ?? [];
 
         if (! is_array($tags) || $tags === []) {
@@ -400,6 +444,30 @@ class AktaController extends Controller
                 $template->id_template_akta => [
                     'title' => $template->title,
                     'tags' => $template->tags ?? [],
+                ],
+            ];
+        })->toArray();
+    }
+
+    /**
+     * Build a client-id keyed map of klien attributes for the front-end
+     * auto-fill of Pihak 1 / Pihak 2 fields.
+     *
+     * @return array<string, array<string, string>>
+     */
+    private function buildKlienData($kliens): array
+    {
+        return $kliens->mapWithKeys(function ($klien) {
+            return [
+                (string) $klien->id_klien => [
+                    'nama_lengkap' => (string) $klien->nama_lengkap,
+                    'nik' => (string) $klien->nik,
+                    'tempat_tanggal_lahir' => (string) $klien->tempat_tanggal_lahir,
+                    'jenis_kelamin' => (string) $klien->jenis_kelamin,
+                    'alamat' => (string) $klien->alamat,
+                    'nomor_telepon' => (string) $klien->nomor_telepon,
+                    'pekerjaan' => (string) $klien->pekerjaan,
+                    'npwp' => (string) ($klien->npwp ?? ''),
                 ],
             ];
         })->toArray();

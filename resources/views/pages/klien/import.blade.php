@@ -21,7 +21,7 @@
                 <li>Isi data klien sesuai dengan format yang tersedia</li>
                 <li>Pastikan NIK berisi 16 digit angka dan unik (tidak ada duplikasi)</li>
                 <li>Jenis Kelamin harus diisi dengan "L" (Laki-laki) atau "P" (Perempuan)</li>
-                <li>Semua kolom wajib diisi kecuali NPWP</li>
+                <li>Semua kolom wajib diisi, termasuk NPWP</li>
                 <li>Upload file yang sudah diisi dengan format .xlsx, .xls, atau .csv</li>
             </ol>
         </div>
@@ -154,8 +154,8 @@
                         <tr>
                             <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">npwp</td>
                             <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">Text</td>
-                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">Tidak</td>
-                            <td class="px-6 py-4 text-sm text-gray-500">Nomor NPWP (opsional)</td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">Ya</td>
+                            <td class="px-6 py-4 text-sm text-gray-500">Nomor NPWP klien</td>
                         </tr>
                     </tbody>
                 </table>

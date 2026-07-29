@@ -59,8 +59,8 @@
                 </div>
 
                 <div class="md:col-span-2">
-                    <label for="npwp" class="block text-sm font-medium text-gray-700 mb-2">NPWP (Opsional)</label>
-                    <input type="text" name="npwp" id="npwp" value="{{ old('npwp') }}" placeholder="12.345.678.9-012.345" class="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 @error('npwp') border-red-500 @enderror">
+                    <label for="npwp" class="block text-sm font-medium text-gray-700 mb-2">NPWP <span class="text-red-500">*</span></label>
+                    <input type="text" name="npwp" id="npwp" value="{{ old('npwp') }}" placeholder="12.345.678.9-012.345" class="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 @error('npwp') border-red-500 @enderror" required>
                     @error('npwp') <p class="mt-1 text-sm text-red-600">{{ $message }}</p> @enderror
                 </div>
             </div>

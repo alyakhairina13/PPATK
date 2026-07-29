@@ -5,7 +5,12 @@
         <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div>
                 <h2 class="text-2xl font-semibold text-gray-800">Akta AKT-{{ str_pad($akta->id_akta, 4, '0', STR_PAD_LEFT) }} - {{ $akta->jenis_template }}</h2>
-                <p class="mt-1 text-sm text-gray-600">Klien: {{ $akta->klien->nama_lengkap ?? '-' }}</p>
+                <p class="mt-1 text-sm text-gray-600">
+                    Pihak 1: {{ $akta->klien->nama_lengkap ?? '-' }}
+                    @if($akta->klienPihak2)
+                        <span class="mx-1 text-gray-400">|</span> Pihak 2: {{ $akta->klienPihak2->nama_lengkap }}
+                    @endif
+                </p>
             </div>
             <div class="flex flex-wrap gap-2">
                 @if($akta->templateAkta)
