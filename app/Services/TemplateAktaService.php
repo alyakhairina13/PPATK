@@ -202,6 +202,8 @@ class TemplateAktaService
      */
     private function extractTagsFromString(string $content): array
     {
+        $content = $this->consolidatePlaceholderSpans($content);
+
         preg_match_all('/(?:\{!!|\{\{)\s*(.+?)\s*(?:!!\}|\}\})/s', $content, $matches);
 
         $tags = [];
@@ -217,6 +219,46 @@ class TemplateAktaService
         ksort($tags);
 
         return array_values($tags);
+    }
+
+    /**
+     * Repair Word placeholders that have been scattered across multiple XML
+     * runs. Word routinely splits a single `{{ $var }}` into several
+     * `<w:t>` text runs (e.g. when formatting or spell-checking changed in
+     * the middle of the expression). That breaks both tag extraction and
+     * the merge step, because the `$` ends up separated from the variable
+     * name by `</w:t>...</w:t>` tags.
+     *
+     * This iteratively re-joins consecutive text runs, but ONLY when the
+     * first run opened a placeholder that was not closed within it (i.e. an
+     * actual split). Runs without placeholder syntax are left untouched, so
+     * ordinary formatting is preserved.
+     */
+    private function consolidatePlaceholderSpans(string $content): string
+    {
+        $pattern = '/(<w:t(?:\s[^>]*)?>)(?=[^<]*(?:\{\{|\{!!))(.*?)<\/w:t>((?:(?!<w:t(?:\s[^>]*)?>).)*?)(<w:t(?:\s[^>]*)?>)(.*?)<\/w:t>/s';
+
+        do {
+            $changed = false;
+            $content = preg_replace_callback($pattern, function (array $m) use (&$changed): string {
+                $text1 = $m[2];
+                $text2 = $m[5];
+
+                $opened = preg_match('/\{\{|\{!!/', $text1) === 1;
+                $closed = preg_match('/\}\}|!!\}/', $text1) === 1;
+
+                // Only merge when run 1 opened a placeholder it did not close.
+                if (! $opened || $closed) {
+                    return $m[0];
+                }
+
+                $changed = true;
+
+                return $m[1].$text1.$text2.'</w:t>';
+            }, $content);
+        } while ($changed);
+
+        return $content;
     }
 
     private function readDocxContents(string $path): string
@@ -311,6 +353,8 @@ class TemplateAktaService
 
     private function replaceTemplateExpressions(string $content, array $payload): string
     {
+        $content = $this->consolidatePlaceholderSpans($content);
+
         return preg_replace_callback(
             '/(\{!!|\{\{)\s*(.+?)\s*(!!\}|\}\})/s',
             function (array $matches) use ($payload): string {
