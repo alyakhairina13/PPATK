@@ -33,6 +33,7 @@ Route::middleware('auth')->group(function () {
     Route::get('/klien/create', [KlienController::class, 'create'])->name('klien.create');
     Route::post('/klien', [KlienController::class, 'store'])->name('klien.store');
     Route::get('/klien/import', [KlienController::class, 'import'])->name('klien.import');
+    Route::get('/klien/import/template', [KlienController::class, 'downloadTemplate'])->name('klien.template');
     Route::post('/klien/import', [KlienController::class, 'processImport'])->name('klien.processImport');
     Route::get('/klien/{klien}', [KlienController::class, 'show'])->name('klien.show');
     Route::get('/klien/{klien}/edit', [KlienController::class, 'edit'])->name('klien.edit');

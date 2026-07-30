@@ -76,6 +76,47 @@ class KlienController extends Controller
         return view('pages.klien.import');
     }
 
+    public function downloadTemplate()
+    {
+        $headers = [
+            'nama_lengkap',
+            'nik',
+            'tempat_tanggal_lahir',
+            'jenis_kelamin',
+            'alamat',
+            'nomor_telepon',
+            'pekerjaan',
+            'npwp',
+        ];
+
+        $example = [
+            'Budi Santoso',
+            '3171010101900001',
+            'Jakarta, 01 Januari 1990',
+            'Laki-laki',
+            'Jl. Merdeka No. 1, Jakarta Pusat',
+            '081234567890',
+            'Wiraswasta',
+            '12.345.678.9-012.345',
+        ];
+
+        $callback = function () use ($headers, $example) {
+            $handle = fopen('php://output', 'w');
+
+            fprintf($handle, chr(0xEF).chr(0xBB).chr(0xBF));
+
+            fputcsv($handle, $headers);
+            fputcsv($handle, $example);
+
+            fclose($handle);
+        };
+
+        return response()->stream($callback, 200, [
+            'Content-Type' => 'text/csv; charset=UTF-8',
+            'Content-Disposition' => 'attachment; filename="template-import-klien.csv"',
+        ]);
+    }
+
     public function processImport(Request $request)
     {
         $request->validate([
