@@ -71,9 +71,6 @@
                     <a href="{{ route('laporan.export', 'pdf') }}{{ $filterQuery ? '?'.$filterQuery : '' }}" class="flex items-center gap-1 text-[10px] px-2.5 py-1 bg-white border border-red-200 text-red-600 rounded font-semibold hover:bg-red-50 transition-colors">
                         <span class="material-symbols-outlined text-[13px] font-bold">picture_as_pdf</span> Ekspor PDF
                     </a>
-                    <a href="{{ route('laporan.export', 'excel') }}{{ $filterQuery ? '?'.$filterQuery : '' }}" class="flex items-center gap-1 text-[10px] px-2.5 py-1 bg-white border border-emerald-200 text-emerald-600 rounded font-semibold hover:bg-emerald-50 transition-colors">
-                        <span class="material-symbols-outlined text-[13px] font-bold">table_view</span> Ekspor CSV
-                    </a>
                 </div>
             </div>
 

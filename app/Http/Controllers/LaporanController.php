@@ -59,13 +59,6 @@ class LaporanController extends Controller
         $laporan = $query->orderBy('tanggal_dibuat', 'desc')->get();
         $stats = $this->computeStats($laporan);
 
-        if ($type === 'excel') {
-            return response($this->csvBody($laporan, $stats), 200, [
-                'Content-Type' => 'text/csv',
-                'Content-Disposition' => 'attachment; filename="laporan-akta.csv"',
-            ]);
-        }
-
         $pdf = $this->buildPdf($laporan, $stats, $request);
 
         return response($pdf, 200, [
@@ -190,52 +183,6 @@ class LaporanController extends Controller
         $gen->table('Daftar Akta', ['No', 'Jenis', 'Klien', 'Status', 'Tanggal'], $rows);
 
         return $gen->render();
-    }
-
-    /**
-     * @param  Collection<int, Akta>  $laporan
-     */
-    private function csvBody(Collection $laporan, array $stats): string
-    {
-        $lines = [];
-        $lines[] = 'SIM Akta Notaris & PPAT - Laporan Akta';
-        $lines[] = 'Dicetak: '.now()->format('d/m/Y H:i');
-        $lines[] = '';
-        $lines[] = 'Ringkasan';
-        $lines[] = 'Total Akta,'.$stats['total'];
-        $lines[] = 'Selesai,'.$stats['selesai'];
-        $lines[] = 'Dalam Proses,'.$stats['dalam_proses'];
-        $lines[] = 'Final,'.$stats['final'];
-        $lines[] = '';
-        $lines[] = 'Statistik per Jenis Akta';
-        foreach ($stats['by_jenis'] as $key => $count) {
-            $lines[] = $this->csvCell($key).','.$count;
-        }
-        $lines[] = '';
-        $lines[] = 'No,Jenis,Klien,Status,Tanggal';
-        $no = 1;
-        foreach ($laporan as $item) {
-            $lines[] = implode(',', [
-                $no++,
-                $this->csvCell($item->jenis_template),
-                $this->csvCell($item->klien?->nama_lengkap ?? '-'),
-                $this->csvCell($item->status_workflow),
-                $item->tanggal_dibuat ? $item->tanggal_dibuat->format('d/m/Y') : '-',
-            ]);
-        }
-
-        return implode("\n", $lines);
-    }
-
-    private function csvCell(?string $value): string
-    {
-        $value = (string) $value;
-
-        if (preg_match('/[",\n]/', $value)) {
-            return '"'.str_replace('"', '""', $value).'"';
-        }
-
-        return $value;
     }
 
     private function filterDescription(Request $request): string
