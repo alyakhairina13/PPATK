@@ -198,6 +198,8 @@
         const fieldsContainer = document.getElementById('template-fields-container');
 
         const PIHAK_PREFIXES = ['dpihak1', 'dpihak2'];
+        const LOCKED_PREFIXES = ['dpihak1'];
+        let formValues = { ...@json($formValues) };
 
         function escapeHtml(value) {
             return String(value)
@@ -304,8 +306,9 @@
 
         function renderField(tag) {
             const isPpatLocked = Object.prototype.hasOwnProperty.call(lockedTemplateValues, tag);
+            const prefix = groupPrefixForTag(tag);
             const klienField = klienFieldForTag(tag);
-            const isKlienLocked = klienField !== null;
+            const isKlienLocked = klienField !== null && LOCKED_PREFIXES.includes(prefix);
             const isLocked = isPpatLocked || isKlienLocked;
             let value;
 
@@ -314,7 +317,7 @@
             } else if (isKlienLocked) {
                 value = klienValueForTag(tag);
             } else {
-                value = initialValues[tag] ?? '';
+                value = formValues[tag] ?? '';
             }
 
             const label = labelForTag(tag);
@@ -334,7 +337,42 @@
             `;
         }
 
+        function captureFieldValues() {
+            const values = {};
+
+            fieldsContainer.querySelectorAll('input[name^="template_fields["]').forEach((input) => {
+                const match = input.name.match(/template_fields\[(.+)\]/);
+                if (match) {
+                    values[match[1]] = input.value;
+                }
+            });
+
+            return values;
+        }
+
+        function fillPihak2Fields() {
+            const selectedId = pihak2Select.value;
+            const klien = selectedId ? (klienData[selectedId] || null) : null;
+
+            fieldsContainer.querySelectorAll('input[name^="template_fields["]').forEach((input) => {
+                const match = input.name.match(/template_fields\[(.+)\]/);
+                if (!match) return;
+
+                const tag = match[1];
+                if (groupPrefixForTag(tag) !== 'dpihak2') return;
+
+                const field = klienFieldForTag(tag);
+                if (field === null) return;
+
+                if (klien && Object.prototype.hasOwnProperty.call(klien, field)) {
+                    input.value = klien[field];
+                }
+            });
+        }
+
         function renderTemplateFields() {
+            Object.assign(formValues, captureFieldValues());
+
             const template = templateOptions[templateSelect.value];
 
             if (!template) {
@@ -368,14 +406,18 @@
 
             fieldsContainer.innerHTML = order.map((prefix) => {
                 const isPpatAutofill = groups[prefix].some((tag) => Object.prototype.hasOwnProperty.call(lockedTemplateValues, tag));
-                const isKlienAutofill = groups[prefix].some((tag) => klienFieldForTag(tag) !== null);
+                const isKlienLocked = groups[prefix].some((tag) => klienFieldForTag(tag) !== null && LOCKED_PREFIXES.includes(prefix));
+                const isKlienPrefill = groups[prefix].some((tag) => klienFieldForTag(tag) !== null && !LOCKED_PREFIXES.includes(prefix));
                 let badge = '';
 
                 if (isPpatAutofill) {
                     badge = '<span class="inline-flex items-center rounded-full bg-blue-50 px-2 py-0.5 text-xs font-medium text-blue-700 ring-1 ring-blue-200">Diisi otomatis dari Konfigurasi PPAT</span>';
-                } else if (isKlienAutofill) {
+                } else if (isKlienLocked) {
                     const source = groupLabelForPrefix(prefix);
                     badge = `<span class="inline-flex items-center rounded-full bg-emerald-50 px-2 py-0.5 text-xs font-medium text-emerald-700 ring-1 ring-emerald-200">Diisi otomatis dari data ${escapeHtml(source)}</span>`;
+                } else if (isKlienPrefill) {
+                    const source = groupLabelForPrefix(prefix);
+                    badge = `<span class="inline-flex items-center rounded-full bg-amber-50 px-2 py-0.5 text-xs font-medium text-amber-700 ring-1 ring-amber-200">Terisi otomatis dari data ${escapeHtml(source)} (dapat diubah)</span>`;
                 }
 
                 return `
@@ -392,11 +434,13 @@
                     </div>
                 `;
             }).join('');
+
+            fillPihak2Fields();
         }
 
         templateSelect?.addEventListener('change', renderTemplateFields);
         pihak1Select?.addEventListener('change', renderTemplateFields);
-        pihak2Select?.addEventListener('change', renderTemplateFields);
+        pihak2Select?.addEventListener('change', fillPihak2Fields);
         renderTemplateFields();
 
         function submitVerification() {

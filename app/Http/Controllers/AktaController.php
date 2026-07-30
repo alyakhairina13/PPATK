@@ -354,7 +354,7 @@ class AktaController extends Controller
                 continue;
             }
 
-            if ($this->klienAutofillService->isAutofillTag($tag)) {
+            if ($this->klienAutofillService->isLockedTag($tag)) {
                 $payload[$tag] = $this->klienAutofillService->resolveTagValueForClients($tag, $pihak1, $pihak2);
                 continue;
             }

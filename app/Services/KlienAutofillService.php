@@ -14,6 +14,13 @@ class KlienAutofillService
     public const AUTOFILL_PREFIXES = ['dpihak1', 'dpihak2'];
 
     /**
+     * Prefixes whose fields are LOCKED (read-only) on the form because they
+     * always mirror the selected klien record verbatim. Pihak 1 is the
+     * primary party and its data must stay in sync with the klien master.
+     */
+    public const LOCKED_PREFIXES = ['dpihak1'];
+
+    /**
      * Mapping of a tag suffix (the part of the tag name that follows the
      * group prefix) to the klien attribute that supplies its value.
      *
@@ -61,12 +68,23 @@ class KlienAutofillService
     }
 
     /**
-     * Whether a tag is auto-filled (and therefore locked) because it maps to
-     * a known klien attribute.
+     * Whether a tag is auto-filled (maps to a known klien attribute).
+     * Covers both locked (Pihak 1) and pre-fillable (Pihak 2) tags.
      */
     public function isAutofillTag(string $tag): bool
     {
         return $this->fieldForTag($tag) !== null;
+    }
+
+    /**
+     * Whether a tag is LOCKED (read-only) on the form because it mirrors the
+     * Pihak 1 klien record.
+     */
+    public function isLockedTag(string $tag): bool
+    {
+        $prefix = $this->prefixForTag($tag);
+
+        return $prefix !== null && in_array($prefix, self::LOCKED_PREFIXES, true);
     }
 
     /**
@@ -133,9 +151,9 @@ class KlienAutofillService
     }
 
     /**
-     * Build the auto-fill payload (tag => value) for the pihak tags present in
-     * the given tag list, pulling values from the selected Pihak 1 / Pihak 2
-     * klien records.
+     * Build the locked payload (tag => value) for the LOCKED pihak tags
+     * (Pihak 1 only). Pihak 2 tags are NOT included here because their
+     * values come from form input (pre-filled by JS but manually editable).
      *
      * @param  array<int, string>  $tags
      * @return array<string, string>
@@ -145,7 +163,7 @@ class KlienAutofillService
         $values = [];
 
         foreach ($tags as $tag) {
-            if ($this->fieldForTag($tag) === null) {
+            if (! $this->isLockedTag($tag) || $this->fieldForTag($tag) === null) {
                 continue;
             }
 
