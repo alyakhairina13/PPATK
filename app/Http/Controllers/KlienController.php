@@ -120,15 +120,20 @@ class KlienController extends Controller
     public function processImport(Request $request)
     {
         $request->validate([
-            'file' => 'required|file|mimes:xlsx,xls,csv|mimetypes:text/csv,text/plain,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet|max:2048',
+            'file' => 'required|file|extensions:xlsx,xls,csv|max:2048',
         ]);
 
         $file = $request->file('file');
-        $rows = array_map('str_getcsv', file($file->getPathname()));
+        $contents = file_get_contents($file->getPathname());
+        $contents = preg_replace('/^\xEF\xBB\xBF/', '', $contents);
+        $rows = array_map('str_getcsv', preg_split('/\r\n|\r|\n/', trim($contents)));
 
-        $headers = array_shift($rows);
+        $headers = array_map('trim', (array) array_shift($rows));
 
         foreach ($rows as $row) {
+            if (count($row) !== count($headers)) {
+                continue;
+            }
             $data = array_combine($headers, $row);
             if (!empty($data['nik']) && !empty($data['nama_lengkap'])) {
                 Klien::firstOrCreate(
