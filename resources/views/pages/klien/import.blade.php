@@ -20,19 +20,19 @@
                 <li>Download template Excel di bawah ini</li>
                 <li>Isi data klien sesuai dengan format yang tersedia</li>
                 <li>Pastikan NIK berisi 16 digit angka dan unik (tidak ada duplikasi)</li>
-                <li>Jenis Kelamin harus diisi dengan "L" (Laki-laki) atau "P" (Perempuan)</li>
+                <li>Jenis Kelamin diisi dengan "Laki-laki" atau "Perempuan"</li>
                 <li>Semua kolom wajib diisi, termasuk NPWP</li>
-                <li>Upload file yang sudah diisi dengan format .xlsx, .xls, atau .csv</li>
+                <li>Upload file yang sudah diisi dengan format .csv, .xlsx, atau .xls</li>
             </ol>
         </div>
 
         <!-- Download Template -->
         <div class="px-6 py-6 border-b border-gray-200">
             <h3 class="text-lg font-semibold text-gray-800 mb-4">Download Template</h3>
-            <p class="text-sm text-gray-600 mb-4">Download template Excel untuk memudahkan import data klien</p>
-            <a href="#" class="inline-flex items-center px-4 py-2 bg-green-600 border border-transparent rounded-md font-semibold text-xs text-white uppercase tracking-widest hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2">
+            <p class="text-sm text-gray-600 mb-4">Download template CSV berisi format kolom beserta contoh pengisian untuk memudahkan import data klien</p>
+            <a href="{{ route('klien.template') }}" class="inline-flex items-center px-4 py-2 bg-green-600 border border-transparent rounded-md font-semibold text-xs text-white uppercase tracking-widest hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2">
                 <span class="material-symbols-outlined text-[18px] mr-2">download</span>
-                Download Template Excel
+                Download Template CSV
             </a>
         </div>
 
