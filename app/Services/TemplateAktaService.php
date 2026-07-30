@@ -202,9 +202,9 @@ class TemplateAktaService
      */
     private function extractTagsFromString(string $content): array
     {
-        $content = $this->consolidatePlaceholderSpans($content);
+        $plainText = strip_tags($content);
 
-        preg_match_all('/(?:\{!!|\{\{)\s*(.+?)\s*(?:!!\}|\}\})/s', $content, $matches);
+        preg_match_all('/(?:\{!!|\{\{)\s*(.+?)\s*(?:!!\}|\}\})/s', $plainText, $matches);
 
         $tags = [];
 
@@ -219,46 +219,6 @@ class TemplateAktaService
         ksort($tags);
 
         return array_values($tags);
-    }
-
-    /**
-     * Repair Word placeholders that have been scattered across multiple XML
-     * runs. Word routinely splits a single `{{ $var }}` into several
-     * `<w:t>` text runs (e.g. when formatting or spell-checking changed in
-     * the middle of the expression). That breaks both tag extraction and
-     * the merge step, because the `$` ends up separated from the variable
-     * name by `</w:t>...</w:t>` tags.
-     *
-     * This iteratively re-joins consecutive text runs, but ONLY when the
-     * first run opened a placeholder that was not closed within it (i.e. an
-     * actual split). Runs without placeholder syntax are left untouched, so
-     * ordinary formatting is preserved.
-     */
-    private function consolidatePlaceholderSpans(string $content): string
-    {
-        $pattern = '/(<w:t(?:\s[^>]*)?>)(?=[^<]*(?:\{\{|\{!!))(.*?)<\/w:t>((?:(?!<w:t(?:\s[^>]*)?>).)*?)(<w:t(?:\s[^>]*)?>)(.*?)<\/w:t>/s';
-
-        do {
-            $changed = false;
-            $content = preg_replace_callback($pattern, function (array $m) use (&$changed): string {
-                $text1 = $m[2];
-                $text2 = $m[5];
-
-                $opened = preg_match('/\{\{|\{!!/', $text1) === 1;
-                $closed = preg_match('/\}\}|!!\}/', $text1) === 1;
-
-                // Only merge when run 1 opened a placeholder it did not close.
-                if (! $opened || $closed) {
-                    return $m[0];
-                }
-
-                $changed = true;
-
-                return $m[1].$text1.$text2.'</w:t>';
-            }, $content);
-        } while ($changed);
-
-        return $content;
     }
 
     private function readDocxContents(string $path): string
@@ -353,34 +313,161 @@ class TemplateAktaService
 
     private function replaceTemplateExpressions(string $content, array $payload): string
     {
-        $content = $this->consolidatePlaceholderSpans($content);
-
-        return preg_replace_callback(
-            '/(\{!!|\{\{)\s*(.+?)\s*(!!\}|\}\})/s',
-            function (array $matches) use ($payload): string {
-                $resolved = $this->resolveExpression(trim($matches[2]), $payload);
-
-                return $resolved === null ? $matches[0] : $resolved;
-            },
-            $content
-        ) ?? $content;
+        return $this->replaceExpressions($content, $payload, padToOriginalLength: false);
     }
 
     private function replaceBinaryDocTemplateExpressions(string $content, array $payload): string
     {
-        return preg_replace_callback(
-            '/(\{!!|\{\{)\s*(.+?)\s*(!!\}|\}\})/s',
-            function (array $matches) use ($payload): string {
-                $resolved = $this->resolveExpression(trim($matches[2]), $payload);
+        return $this->replaceExpressions($content, $payload, padToOriginalLength: true);
+    }
 
-                if ($resolved === null) {
-                    return $matches[0];
+    /**
+     * Replace Blade-style placeholder expressions ({{ $var }}, {!! $var !!})
+     * with values from the payload, even when Word has scattered the
+     * expression across multiple XML text runs.
+     *
+     * Uses a character scanner instead of a single regex so that XML tags
+     * between the opener ({{) and closer (}}) are transparently skipped
+     * without the risk of one placeholder's opener consuming another
+     * placeholder's closer (which a lazy .*? regex would do).
+     */
+    private function replaceExpressions(string $content, array $payload, bool $padToOriginalLength): string
+    {
+        $result = '';
+        $len = strlen($content);
+        $i = 0;
+
+        while ($i < $len) {
+            $opener = $this->matchOpener($content, $i);
+
+            if ($opener === null) {
+                $result .= $content[$i];
+                $i++;
+                continue;
+            }
+
+            [$openTag, $closeTag, $openLen] = $opener;
+            $scan = $this->scanToCloser($content, $i + $openLen, $closeTag);
+
+            if ($scan === null) {
+                $result .= $content[$i];
+                $i++;
+                continue;
+            }
+
+            [$text, $endPos] = $scan;
+            $expression = trim(strip_tags($text));
+            $resolved = $this->resolveExpression($expression, $payload);
+
+            if ($resolved === null) {
+                $result .= substr($content, $i, $endPos - $i);
+            } elseif ($padToOriginalLength) {
+                $result .= $this->fitReplacementToOriginalByteLength($resolved, $endPos - $i);
+            } else {
+                $result .= $resolved;
+            }
+
+            $i = $endPos;
+        }
+
+        return $result;
+    }
+
+    /**
+     * @return array{string,string,int}|null  [openMarker, closeMarker, openLength]
+     */
+    private function matchOpener(string $content, int $pos): ?array
+    {
+        if ($content[$pos] !== '{') {
+            return null;
+        }
+
+        if (substr($content, $pos, 3) === '{!!') {
+            return ['{!!', '!!}', 3];
+        }
+
+        if (substr($content, $pos, 2) === '{{') {
+            return ['{{', '}}', 2];
+        }
+
+        return null;
+    }
+
+    /**
+     * Scan from $start, skipping XML tags, until $closeTag is found.
+     * If another opener ({{ or {!!) is encountered first, return null
+     * (the original opener was unmatched).
+     *
+     * @return array{string,int}|null  [textContent, positionAfterCloseTag]
+     */
+    private function scanToCloser(string $content, int $start, string $closeTag): ?array
+    {
+        $len = strlen($content);
+        $closeLen = strlen($closeTag);
+        $text = '';
+        $j = $start;
+
+        while ($j < $len) {
+            if ($content[$j] === '<') {
+                $tagEnd = strpos($content, '>', $j);
+                if ($tagEnd === false) {
+                    return null;
+                }
+                $j = $tagEnd + 1;
+                continue;
+            }
+
+            if ($content[$j] === $closeTag[0]) {
+                $afterCloser = $this->matchCloserSkippingTags($content, $j, $closeTag);
+
+                if ($afterCloser !== null) {
+                    return [$text, $afterCloser];
+                }
+            }
+
+            if ($content[$j] === '{' && $this->matchOpener($content, $j) !== null) {
+                return null;
+            }
+
+            $text .= $content[$j];
+            $j++;
+        }
+
+        return null;
+    }
+
+    /**
+     * Check whether $closeTag appears at $pos, tolerating XML tags
+     * between its individual characters (Word may split `}}` across
+     * separate `<w:t>` runs just as it splits `{{`).
+     *
+     * @return int|null  Position immediately after the closer, or null.
+     */
+    private function matchCloserSkippingTags(string $content, int $pos, string $closeTag): ?int
+    {
+        $len = strlen($content);
+        $closeLen = strlen($closeTag);
+        $j = $pos;
+
+        for ($ci = 0; $ci < $closeLen; $ci++) {
+            while ($j < $len && $content[$j] === '<') {
+                $tagEnd = strpos($content, '>', $j);
+
+                if ($tagEnd === false) {
+                    return null;
                 }
 
-                return $this->fitReplacementToOriginalByteLength($resolved, strlen($matches[0]));
-            },
-            $content
-        ) ?? $content;
+                $j = $tagEnd + 1;
+            }
+
+            if ($j >= $len || $content[$j] !== $closeTag[$ci]) {
+                return null;
+            }
+
+            $j++;
+        }
+
+        return $j;
     }
 
     private function fitReplacementToOriginalByteLength(string $replacement, int $targetLength): string
